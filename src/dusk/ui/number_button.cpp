@@ -13,7 +13,70 @@ NumberButton::NumberButton(Rml::Element* parent, Props props)
       mGetValue(std::move(props.getValue)), mSetValue(std::move(props.setValue)),
       mIsDisabled(std::move(props.isDisabled)), mIsModified(std::move(props.isModified)),
       mMin(props.min), mMax(props.max), mStep(props.step), mPrefix(std::move(props.prefix)),
-      mSuffix(std::move(props.suffix)) {}
+      mSuffix(std::move(props.suffix)) {
+    Component::listen(mRoot, Rml::EventId::Keydown, [this](Rml::Event& event) {
+        if (disabled()) {
+            return;
+        }
+        if (map_nav_event(event) != NavCommand::Confirm) {
+            return;
+        }
+        if (!is_editing()) {
+            start_editing();
+        } else {
+            request_stop_editing(true, true);
+        }
+        event.StopImmediatePropagation();
+    });
+
+    Component::listen(mRoot, Rml::EventId::Click, [this](Rml::Event& event) {
+        if (disabled() || is_editing() || !contains(event.GetTargetElement())) {
+            return;
+        }
+        set_scrollable(!mScrollable);
+        event.StopImmediatePropagation();
+    });
+
+    Component::listen(mRoot, Rml::EventId::Dblclick, [this](Rml::Event& event) {
+        if (disabled() || is_editing() || !contains(event.GetTargetElement())) {
+            return;
+        }
+        start_editing();
+        event.StopImmediatePropagation();
+    });
+
+    Component::listen(mRoot, Rml::EventId::Blur, [this](Rml::Event& event) {
+        if (contains(event.GetTargetElement())) {
+            set_scrollable(false);
+        }
+    });
+
+    Component::listen(mRoot, Rml::EventId::Mouseout, [this](Rml::Event& event) {
+        if (event.GetTargetElement() == mRoot) {
+            set_scrollable(false);
+        }
+    });
+
+    Component::listen(mRoot, Rml::EventId::Mousescroll, [this](Rml::Event& event) {
+        if (disabled() || is_editing() || !mScrollable || !contains(event.GetTargetElement())) {
+            return;
+        }
+
+        const float wheelDeltaY = event.GetParameter("wheel_delta_y", 0.0f);
+        const float absWheelDeltaY = wheelDeltaY < 0.0f ? -wheelDeltaY : wheelDeltaY;
+        if (absWheelDeltaY == 0.0f) {
+            return;
+        }
+
+        const int newValue = std::clamp(mGetValue() + (wheelDeltaY < 0.0f ? 1 : -1) * mStep, mMin, mMax);
+        if (newValue != mGetValue()) {
+            mSetValue(newValue);
+            mDoAud_seStartMenu(kSoundItemChange);
+        }
+
+        event.StopPropagation();
+    });
+}
 
 bool NumberButton::modified() const {
     if (mIsModified) {
@@ -54,6 +117,10 @@ void NumberButton::set_value(Rml::String value) {
 }
 
 bool NumberButton::handle_nav_command(NavCommand cmd) {
+    if (cmd == NavCommand::Confirm) {
+        return false;
+    }
+
     if (!is_editing() && (cmd == NavCommand::Left || cmd == NavCommand::Right)) {
         const int newValue = std::clamp(
             mGetValue() + (cmd == NavCommand::Right ? mStep : -mStep), mMin, mMax);
@@ -66,4 +133,12 @@ bool NumberButton::handle_nav_command(NavCommand cmd) {
     return BaseStringButton::handle_nav_command(cmd);
 }
 
+void NumberButton::set_scrollable(bool value) {
+    mScrollable = value;
+    mRoot->SetClass("scrollable", value);
+}
+
+void NumberButton::on_editing_started() {
+    set_scrollable(false);
+}
 }  // namespace dusk::ui

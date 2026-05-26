@@ -21,6 +21,7 @@ public:
 
 protected:
     bool is_editing() { return mInputElem != nullptr; }
+    virtual void on_editing_started() {}
     bool handle_nav_command(NavCommand cmd) override;
     virtual void set_value(Rml::String value) = 0;
     virtual Rml::String input_value() { return format_value(); }

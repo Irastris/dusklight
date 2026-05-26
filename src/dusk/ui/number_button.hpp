@@ -31,6 +31,8 @@ protected:
     Rml::String input_value() override;
     void set_value(Rml::String value) override;
     bool handle_nav_command(NavCommand cmd) override;
+    void set_scrollable(bool value);
+    void on_editing_started() override;
 
 private:
     std::function<int()> mGetValue;
@@ -40,6 +42,7 @@ private:
     int mMin;
     int mMax;
     int mStep;
+    bool mScrollable = false;
     Rml::String mPrefix;
     Rml::String mSuffix;
 };
