@@ -14,6 +14,9 @@
 
 #if TARGET_PC
 #include "dusk/frame_interpolation.h"
+
+static const int LINE_SEGMENT_COUNT = 12;
+typedef dusk::frame_interp::DualBuffer<cXyz, LINE_SEGMENT_COUNT> LineInterp;
 #endif
 
 class daE_YH_HIO_c : public JORReflexible {
@@ -89,22 +92,6 @@ static BOOL leaf_anm_init(e_yh_class* i_this, int param_2, f32 param_3, u8 param
     return FALSE;
 }
 
-#if TARGET_PC
-static void daE_YH_interp_callback(bool isSimFrame, void* pUserWork) {
-    e_yh_class* i_this = (e_yh_class*)pUserWork;
-    if (!i_this->mLineInterpPrevValid || !i_this->mLineInterpCurrValid) {
-        return;
-    }
-    const f32 alpha = dusk::frame_interp::get_interpolation_step();
-    cXyz* dst = i_this->mLine.getPos(0);
-    for (int i = 0; i < 12; i++) {
-        const cXyz& p0 = i_this->mLineInterpPrev[i];
-        const cXyz& p1 = i_this->mLineInterpCurr[i];
-        dst[i] = p0 + (p1 - p0) * alpha;
-    }
-}
-#endif
-
 static int daE_YH_Draw(e_yh_class* i_this) {
     fopAc_ac_c* a_this = (fopAc_ac_c*)i_this;
 
@@ -134,17 +121,7 @@ static int daE_YH_Draw(e_yh_class* i_this) {
 
     i_this->mLine.update(12, l_color, &a_this->tevStr);
     dComIfGd_set3DlineMat(&i_this->mLine);
-#if TARGET_PC
-    if (dusk::frame_interp::is_enabled()) {
-        if (i_this->mLineInterpCurrValid) {
-            memcpy(i_this->mLineInterpPrev, i_this->mLineInterpCurr, sizeof(i_this->mLineInterpCurr));
-            i_this->mLineInterpPrevValid = true;
-        }
-        memcpy(i_this->mLineInterpCurr, i_this->mLine.getPos(0), 12 * sizeof(cXyz));
-        i_this->mLineInterpCurrValid = true;
-        dusk::frame_interp::add_interpolation_callback(&daE_YH_interp_callback, i_this);
-    }
-#endif
+    IF_DUSK(dusk::frame_interp::get<LineInterp>(i_this).writeback(i_this->mLine.getPos(0), LINE_SEGMENT_COUNT));
 
     for (int i = 1; i < 11; i++) {
         if (i_this->mModels[i] != NULL) {

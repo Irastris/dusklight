@@ -55,8 +55,6 @@
 #include "helpers/endian.h"
 #include "helpers/gx_helper.h"
 
-#include "d/actor/d_a_horse.h"
-
 #include <aurora/lib/window.hpp>
 #include <SDL3/SDL_video.h>
 #include <tracy/Tracy.hpp>
@@ -2414,10 +2412,6 @@ int mDoGph_Painter() {
 
 #if TARGET_PC
             if (dusk::frame_interp::is_enabled()) {
-                // FRAME INTERP NOTE: Currently only recalculating points for Epona's reins. Need a more global solution.
-                if (daHorse_c* horse = dComIfGp_getHorseActor()) {
-                    horse->lerpControlPoints(dusk::frame_interp::get_interpolation_step());
-                }
                 g_dComIfG_gameInfo.drawlist.refresh3DlineMats(camera_p->view.lookat.eye);
             }
 #endif

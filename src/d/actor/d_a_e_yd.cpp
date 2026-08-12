@@ -14,6 +14,9 @@
 
 #if TARGET_PC
 #include "dusk/frame_interpolation.h"
+
+static const int LINE_SEGMENT_COUNT = 12;
+typedef dusk::frame_interp::DualBuffer<cXyz, LINE_SEGMENT_COUNT> LineInterp;
 #endif
 
 class daE_YD_HIO_c {
@@ -77,22 +80,6 @@ static s32 leaf_anm_init(e_yd_class* i_this, int param_1, f32 param_2, u8 param_
     return false;
 }
 
-#if TARGET_PC
-static void daE_YD_interp_callback(bool isSimFrame, void* pUserWork) {
-    e_yd_class* i_this = (e_yd_class*)pUserWork;
-    if (!i_this->mLineMatInterpPrevValid || !i_this->mLineMatInterpCurrValid) {
-        return;
-    }
-    const f32 alpha = dusk::frame_interp::get_interpolation_step();
-    cXyz* dst = i_this->mLineMat.getPos(0);
-    for (int i = 0; i < 12; i++) {
-        const cXyz& p0 = i_this->mLineMatInterpPrev[i];
-        const cXyz& p1 = i_this->mLineMatInterpCurr[i];
-        dst[i] = p0 + (p1 - p0) * alpha;
-    }
-}
-#endif
-
 static s32 daE_YD_Draw(e_yd_class* i_this) {
     static GXColor l_color = { 0x14, 0x0F, 0x00, 0xFF };
 
@@ -106,17 +93,7 @@ static s32 daE_YD_Draw(e_yd_class* i_this) {
     i_this->mpMorf->entryDL();
     i_this->mLineMat.update(12, l_color, &i_this->actor.tevStr);
     dComIfGd_set3DlineMat(&i_this->mLineMat);
-#if TARGET_PC
-    if (dusk::frame_interp::is_enabled()) {
-        if (i_this->mLineMatInterpCurrValid) {
-            memcpy(i_this->mLineMatInterpPrev, i_this->mLineMatInterpCurr, sizeof(i_this->mLineMatInterpCurr));
-            i_this->mLineMatInterpPrevValid = true;
-        }
-        memcpy(i_this->mLineMatInterpCurr, i_this->mLineMat.getPos(0), 12 * sizeof(cXyz));
-        i_this->mLineMatInterpCurrValid = true;
-        dusk::frame_interp::add_interpolation_callback(&daE_YD_interp_callback, i_this);
-    }
-#endif
+    IF_DUSK(dusk::frame_interp::get<LineInterp>(i_this).writeback(i_this->mLineMat.getPos(0), LINE_SEGMENT_COUNT));
     for (s32 i = 1; i < 11; i++) {
         if (i_this->field_0x77c[i] != 0) {
             g_env_light.setLightTevColorType_MAJI(i_this->field_0x77c[i], &i_this->actor.tevStr);

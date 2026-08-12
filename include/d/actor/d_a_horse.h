@@ -196,9 +196,6 @@ public:
     void copyReinPos();
     void setReinPosHandSubstance(int);
     void setReinPosNormalSubstance();
-#if TARGET_PC
-    void lerpControlPoints(f32 alpha);
-#endif
     void bgCheck();
     bool checkSpecialWallHitSubstance(cXyz const&) const;
     void setServiceWaitTimer();
@@ -478,7 +475,7 @@ public:
     /* 0x18D4 */ int (daHorse_c::*m_callHorse)(const cXyz*);
     /* 0x18E0 */ void (daHorse_c::*m_setHorsePosAngle)(const cXyz* i_pos, s16 i_angle);
     /* 0x18EC */ void (daHorse_c::*m_onRideFlg)();
-    /* 0x18F8 */ void (daHorse_c::*m_offRideFlg)();
+    /* 0x18F8 */     void (daHorse_c::*m_offRideFlg)();
 };
 
 class daHorse_hio_c1 {

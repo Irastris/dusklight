@@ -24,17 +24,8 @@
 #include "dusk/dusk.h"
 #include "dusk/frame_interpolation.h"
 
-namespace {
-// FRAME INTERP NOTE: Sim tick control point snapshots for interpolation
-constexpr int kHorseReinSimMax = 75;
-cXyz s_horseReinSimPrev[kHorseReinSimMax];
-cXyz s_horseReinSimCurr[kHorseReinSimMax];
-int s_horseReinSimNumPrev;
-int s_horseReinSimNumCurr;
-bool s_horseReinSimPrevValid;
-bool s_horseReinSimCurrValid;
-uint64_t s_horseReinSimRolledSeq;
-}  // namespace
+static const int REIN_INTERP_MAX = 75;
+typedef dusk::frame_interp::DualBuffer<cXyz, REIN_INTERP_MAX> ReinInterp;
 #endif
 
 #define ANM_HS_BACK_WALK           6
@@ -3034,21 +3025,11 @@ void daHorse_c::copyReinPos() {
         *pos_p = rein->field_0x0[0][i];
     }
 #if TARGET_PC
-    if (field_0x1204 > 0) {
-        const uint64_t simSeq = dusk::frame_interp::sim_tick_seq();
-        if (simSeq != s_horseReinSimRolledSeq) {
-            s_horseReinSimRolledSeq = simSeq;
-            if (s_horseReinSimCurrValid && s_horseReinSimNumCurr > 0) {
-                memcpy(s_horseReinSimPrev, s_horseReinSimCurr, s_horseReinSimNumCurr * sizeof(cXyz));
-                s_horseReinSimNumPrev = s_horseReinSimNumCurr;
-                s_horseReinSimPrevValid = true;
-            }
-        }
-        memcpy(s_horseReinSimCurr, m_reinLine.getPos(0), field_0x1204 * sizeof(cXyz));
-        s_horseReinSimNumCurr = field_0x1204;
-        s_horseReinSimCurrValid = true;
+    auto& reinInterp = dusk::frame_interp::get<ReinInterp>(this);
+    if (field_0x1204 > 0 && field_0x1204 <= REIN_INTERP_MAX) {
+        reinInterp.writeback_on_sim_tick(m_reinLine.getPos(0), field_0x1204);
     } else {
-        s_horseReinSimCurrValid = false;
+        reinInterp.reset();
     }
 #endif
 }
@@ -3161,30 +3142,6 @@ void daHorse_c::setReinPosNormalSubstance() {
 
     copyReinPos();
 }
-
-#if TARGET_PC
-void daHorse_c::lerpControlPoints(f32 alpha) {
-    // FRAME INTERP NOTE: Currently only lerping points for Epona's reins. Need a more global solution.
-    if (!dusk::frame_interp::is_enabled() || !s_horseReinSimPrevValid || !s_horseReinSimCurrValid) {
-        return;
-    }
-    const int nCurr = s_horseReinSimNumCurr;
-    const int nPrev = s_horseReinSimNumPrev;
-    if (nCurr <= 0) {
-        return;
-    }
-    int n = nPrev < nCurr ? nPrev : nCurr;
-    if (n <= 0 || n > kHorseReinSimMax) {
-        return;
-    }
-    cXyz* dst = m_reinLine.getPos(0);
-    for (int i = 0; i < n; i++) {
-        const cXyz& p0 = s_horseReinSimPrev[i];
-        const cXyz& p1 = s_horseReinSimCurr[i];
-        dst[i] = p0 + (p1 - p0) * alpha;
-    }
-}
-#endif
 
 void daHorse_c::bgCheck() {
     if (m_procID != PROC_LARGE_DAMAGE_e) {

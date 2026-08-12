@@ -31,6 +31,8 @@
 #include "dusk/settings.h"
 #include "dusk/version.hpp"
 #include "mods/items.h"
+
+typedef dusk::frame_interp::DualBuffer<cXyz, MG_ROD_LURE_LINE_LEN> LineInterp;
 #endif
 
 class dmg_rod_HIO_c : public JORReflexible {
@@ -184,19 +186,9 @@ static int Worm_nodeCallBack(J3DJoint* i_joint, int param_1) {
 }
 
 #if TARGET_PC
-static void dmg_rod_interp_callback(bool isSimFrame, void* pUserWork) {
+static void dmg_rod_interp_post(void* pUserWork) {
     dmg_rod_class* i_this = (dmg_rod_class*)pUserWork;
-    if (!i_this->mLineInterpPrevValid || !i_this->mLineInterpCurrValid) {
-        return;
-    }
-    const f32 alpha = dusk::frame_interp::get_interpolation_step();
     const int count = i_this->kind == MG_ROD_KIND_LURE ? MG_ROD_LURE_LINE_LEN : MG_ROD_UKI_LINE_LEN;
-    cXyz* dst = i_this->linemat.getPos(0);
-    for (int i = 0; i < count; i++) {
-        const cXyz& p0 = i_this->mLineInterpPrev[i];
-        const cXyz& p1 = i_this->mLineInterpCurr[i];
-        dst[i] = p0 + (p1 - p0) * alpha;
-    }
     static GXColor l_color = {0xFF, 0xFF, 0x96, 0xFF};
     i_this->linemat.update(count, l_color, &i_this->actor.tevStr);
 }
@@ -242,17 +234,7 @@ static int dmg_rod_Draw(dmg_rod_class* i_this) {
         i_this->linemat.update(MG_ROD_LURE_LINE_LEN, l_color, &i_this->actor.tevStr);
         dComIfGd_set3DlineMat(&i_this->linemat);
 
-#if TARGET_PC
-        if (dusk::frame_interp::is_enabled()) {
-            if (i_this->mLineInterpCurrValid) {
-                memcpy(i_this->mLineInterpPrev, i_this->mLineInterpCurr, MG_ROD_LURE_LINE_LEN * sizeof(cXyz));
-                i_this->mLineInterpPrevValid = true;
-            }
-            memcpy(i_this->mLineInterpCurr, i_this->linemat.getPos(0), MG_ROD_LURE_LINE_LEN * sizeof(cXyz));
-            i_this->mLineInterpCurrValid = true;
-            dusk::frame_interp::add_interpolation_callback(&dmg_rod_interp_callback, i_this);
-        }
-#endif
+        IF_DUSK(dusk::frame_interp::get<LineInterp>(i_this).writeback(i_this->linemat.getPos(0), MG_ROD_LURE_LINE_LEN, &dmg_rod_interp_post, i_this));
 
         model = i_this->rod_modelMorf->getModel();
         g_env_light.setLightTevColorType_MAJI(model, &i_this->actor.tevStr);
@@ -278,17 +260,7 @@ static int dmg_rod_Draw(dmg_rod_class* i_this) {
         i_this->linemat.update(MG_ROD_UKI_LINE_LEN, l_color, &i_this->actor.tevStr);
         dComIfGd_set3DlineMat(&i_this->linemat);
 
-#if TARGET_PC
-        if (dusk::frame_interp::is_enabled()) {
-            if (i_this->mLineInterpCurrValid) {
-                memcpy(i_this->mLineInterpPrev, i_this->mLineInterpCurr, MG_ROD_UKI_LINE_LEN * sizeof(cXyz));
-                i_this->mLineInterpPrevValid = true;
-            }
-            memcpy(i_this->mLineInterpCurr, i_this->linemat.getPos(0), MG_ROD_UKI_LINE_LEN * sizeof(cXyz));
-            i_this->mLineInterpCurrValid = true;
-            dusk::frame_interp::add_interpolation_callback(&dmg_rod_interp_callback, i_this);
-        }
-#endif
+        IF_DUSK(dusk::frame_interp::get<LineInterp>(i_this).writeback(i_this->linemat.getPos(0), MG_ROD_UKI_LINE_LEN, &dmg_rod_interp_post, i_this));
 
         for (int i = 0; i < 15; i++) {
             g_env_light.setLightTevColorType_MAJI(i_this->rod_uki_model[i], &actor->tevStr);
@@ -6480,11 +6452,6 @@ static int dmg_rod_Create(fopAc_ac_c* i_this) {
             OS_REPORT("//////////////MG_ROD SET NON !!\n");
             return cPhs_ERROR_e;
         }
-
-#if TARGET_PC
-        rod->mLineInterpPrevValid = false;
-        rod->mLineInterpCurrValid = false;
-#endif
 
         OS_REPORT("//////////////MG_ROD SET 2 !!\n");
         if (!hio_set) {
