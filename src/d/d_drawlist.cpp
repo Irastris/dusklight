@@ -14,6 +14,7 @@
 #include "m_Do/m_Do_mtx.h"
 
 #if TARGET_PC
+#include "dusk/game_clock.h"
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/logging.h"
 #include "helpers/gx_helper.h"
@@ -2060,7 +2061,7 @@ void dDlst_list_c::wipeIn(f32 i_wipeSpeed) {
 
 void dDlst_list_c::calcWipe() {
     if (mWipe) {
-        mWipeRate += mWipeSpeed;
+        mWipeRate += mWipeSpeed IF_DUSK(* dusk::game_clock::original_frames());
         if (mWipeRate < 0.0f) {
             mWipeRate = 0.0f;
         } else if (mWipeRate > 1.0f) {

@@ -7,6 +7,9 @@ constexpr float kSimPeriod = 1.0f / 30.0f;
 constexpr float kUiMaximumDt = 0.05f;
 constexpr float kUiInitialDt = 1.0f / 60.0f;
 
+float ui_dt();
+float original_frames();
+
 struct FrameTiming {
     // Amount of time elapsed in seconds since the last advance
     float dt;

@@ -24,6 +24,7 @@ game_clock::time_point s_latestGameSample{};
 game_clock::time_point s_currentSnapshotTime{};
 game_clock::time_point s_pendingSimTime{};
 std::unordered_map<uintptr_t, game_clock::time_point> s_intervalLastSample;
+float s_presentationDtSeconds = kUiInitialDt;
 
 constexpr game_clock::duration kSimPeriodDuration =
     std::chrono::duration_cast<game_clock::duration>(std::chrono::duration<float>(kSimPeriod));
@@ -70,6 +71,7 @@ const FrameTiming& advance() {
 
     auto& out = g_frameTiming;
     out = {.dt = std::chrono::duration<float>(gameFrameGap).count()};
+    s_presentationDtSeconds = out.dt;
 
     const float timeScale = aurora::time::scale();
     const bool interpolating =
@@ -128,6 +130,19 @@ float sample_interpolation_step() {
         std::chrono::duration<float>(game_clock::now() - s_currentSnapshotTime).count() /
         kSimPeriod;
     return std::clamp(step, 0.0f, 1.0f);
+}
+
+float ui_dt() {
+    if (s_simTickActive) {
+        return kSimPeriod;
+    }
+
+    const float maximumDt = kUiMaximumDt * aurora::time::scale();
+    return std::clamp(s_presentationDtSeconds, 0.0f, maximumDt);
+}
+
+float original_frames() {
+    return ui_dt() / kSimPeriod;
 }
 
 float consume_interval(const void* consumer) {
