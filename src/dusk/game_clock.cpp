@@ -23,7 +23,6 @@ native_clock::time_point s_previousNativeSample{};
 game_clock::time_point s_latestGameSample{};
 game_clock::time_point s_currentSnapshotTime{};
 game_clock::time_point s_pendingSimTime{};
-
 std::unordered_map<uintptr_t, game_clock::time_point> s_intervalLastSample;
 
 constexpr game_clock::duration kSimPeriodDuration =
@@ -65,11 +64,12 @@ const FrameTiming& advance() {
     const auto nativeNow = native_clock::now();
     const auto gameNow = game_clock::now();
     const auto nativeFrameGap = nativeNow - s_previousNativeSample;
+    const auto gameFrameGap = gameNow - s_latestGameSample;
     s_previousNativeSample = nativeNow;
     s_latestGameSample = gameNow;
 
     auto& out = g_frameTiming;
-    out = {.dt = std::chrono::duration<float>().count()};
+    out = {.dt = std::chrono::duration<float>(gameFrameGap).count()};
 
     const float timeScale = aurora::time::scale();
     const bool interpolating =

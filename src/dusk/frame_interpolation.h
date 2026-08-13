@@ -37,6 +37,7 @@ void set_ui_tick_pending(bool value);
 bool get_ui_tick_pending();
 
 bool is_sim_frame();
+bool is_presentation_frame();
 
 void record_camera(::camera_process_class* cam, int camera_id);
 void interp_view(::view_class* view);
@@ -49,8 +50,8 @@ bool lookup_concat_replacement(const void* lhs, const void* rhs, Mtx out);
 typedef void (*InterpolationCallBack)(void* pUserWork);
 void add_interpolation_callback(InterpolationCallBack pCallBack, void* pUserWork);
 
-void begin_presentation_camera();
-void end_presentation_camera();
+void begin_presentation();
+void end_presentation();
 
 inline s16 lerp(s16 lhs, s16 rhs, float step) {
     const f32 ra = S2RAD(lhs);

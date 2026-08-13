@@ -15,17 +15,17 @@ struct Recording {
 };
 
 bool g_enabled = false;
-bool g_recording = false;
+bool s_recording = false;
 bool g_interpolating = false;
-bool g_sync_presentation = false;
+bool s_syncPresentation = false;
 
-float g_step = 0.0f;
+float s_step = 0.0f;
 bool g_is_sim_frame = false;
-bool g_ui_tick_pending = false;
-uint64_t g_sim_tick_seq = 0;
+bool s_uiTickPending = false;
+uint64_t s_simTickSeq = 0;
 
-Recording g_current_recording;
-Recording g_previous_recording;
+Recording s_currentRecording;
+Recording s_previousRecording;
 
 absl::flat_hash_map<uintptr_t, Mtx> g_replacements;
 
@@ -42,11 +42,11 @@ struct CameraSnapshot {
     bool valid{};
 };
 
-CameraSnapshot s_cam_prev{};
-CameraSnapshot s_cam_curr{};
+CameraSnapshot s_camPrev{};
+CameraSnapshot s_camCurr{};
 
-view_class s_presentation_view_backup{};
-int s_presentation_depth = 0;
+view_class s_presentationViewBackup{};
+int s_presentationDepth = 0;
 
 struct InterpolationCallBackWork {
     dusk::frame_interp::InterpolationCallBack pCallBack;
@@ -99,18 +99,18 @@ void begin_sim_tick() {
     }
 
     s_interpolationCallBackWork.clear();
-    s_cam_prev = std::move(s_cam_curr);
-    ++g_sim_tick_seq;
+    s_camPrev = std::move(s_camCurr);
+    ++s_simTickSeq;
 }
 
 uint64_t sim_tick_seq() {
-    return g_sim_tick_seq;
+    return s_simTickSeq;
 }
 
 void begin_frame(FrameInterpMode mode, bool is_sim_frame, float step) {
     g_enabled = mode != FrameInterpMode::Off;
     g_is_sim_frame = is_sim_frame;
-    g_step = std::clamp(step, 0.0f, 1.0f);
+    s_step = std::clamp(step, 0.0f, 1.0f);
     if (!g_enabled) {
         g_interpolating = false;
         clear_replacements();
@@ -125,46 +125,50 @@ bool is_sim_frame() {
     return g_is_sim_frame;
 }
 
+bool is_presentation_frame() {
+    return !game_clock::g_frameTiming.separatePresentation || !game_clock::is_sim_tick_active();
+}
+
 void begin_record() {
     if (!g_enabled) {
         g_interpolating = false;
-        g_sync_presentation = false;
-        g_previous_recording = {};
-        g_current_recording = {};
+        s_syncPresentation = false;
+        s_previousRecording = {};
+        s_currentRecording = {};
         clear_replacements();
-        s_cam_prev.valid = false;
-        s_cam_curr.valid = false;
+        s_camPrev.valid = false;
+        s_camCurr.valid = false;
         return;
     }
 
-    g_sync_presentation = false;
-    g_previous_recording = std::move(g_current_recording);
-    g_current_recording = {};
-    g_recording = true;
+    s_syncPresentation = false;
+    s_previousRecording = std::move(s_currentRecording);
+    s_currentRecording = {};
+    s_recording = true;
     g_interpolating = false;
     clear_replacements();
 
     if (dComIfGp_getCamera(0) == nullptr) {
-        s_cam_prev.valid = false;
-        s_cam_curr.valid = false;
+        s_camPrev.valid = false;
+        s_camCurr.valid = false;
     }
 }
 
 void end_record() {
-    g_recording = false;
+    s_recording = false;
 }
 
 void interpolate() {
     clear_replacements();
-    g_interpolating = g_enabled && !g_recording && !g_sync_presentation && has_recording_data(g_current_recording);
+    g_interpolating = g_enabled && !s_recording && !s_syncPresentation && has_recording_data(s_currentRecording);
     if (!g_interpolating) {
         return;
     }
-    for (auto const& old : g_previous_recording.matrix_values) {
-        if (auto it = g_current_recording.matrix_values.find(old.first);
-            it != g_current_recording.matrix_values.end())
+    for (auto const& old : s_previousRecording.matrix_values) {
+        if (auto it = s_currentRecording.matrix_values.find(old.first);
+            it != s_currentRecording.matrix_values.end())
         {
-            lerp(g_replacements[old.first], old.second, it->second, g_step);
+            lerp(g_replacements[old.first], old.second, it->second, s_step);
         }
     }
 }
@@ -173,35 +177,35 @@ void request_presentation_sync() {
     if (!g_enabled) {
         return;
     }
-    g_sync_presentation = true;
+    s_syncPresentation = true;
 }
 
 bool presentation_sync_active() {
     if (!g_enabled) {
         return false;
     }
-    return g_sync_presentation;
+    return s_syncPresentation;
 }
 
 float get_interpolation_step() {
-    return presentation_sync_active() ? 1.0f : g_step;
+    return presentation_sync_active() ? 1.0f : s_step;
 }
 
 void set_ui_tick_pending(bool value) {
-    if (g_ui_tick_pending == value) { return; }
-    g_ui_tick_pending = value;
+    if (s_uiTickPending == value) { return; }
+    s_uiTickPending = value;
 }
 
 bool get_ui_tick_pending() {
-    return g_enabled ? g_ui_tick_pending : true;
+    return g_enabled ? s_uiTickPending : true;
 }
 
 void record_final_mtx(Mtx m, const void* key) {
-    if (!g_recording || m == nullptr) {
+    if (!s_recording || m == nullptr) {
         return;
     }
 
-    auto& it = g_current_recording.matrix_values[reinterpret_cast<uintptr_t>(key)];
+    auto& it = s_currentRecording.matrix_values[reinterpret_cast<uintptr_t>(key)];
     MTXCopy(m, it);
 }
 
@@ -244,9 +248,9 @@ void record_camera(::camera_process_class* cam, int camera_id) {
     if (!g_enabled || camera_id != 0 || cam == nullptr) {
         return;
     }
-    copy_view_to_snap(&s_cam_curr, cam->view);
+    copy_view_to_snap(&s_camCurr, cam->view);
 #if WIDESCREEN_SUPPORT
-    s_cam_curr.wideZoom = mDoGph_gInf_c::isWideZoom();
+    s_camCurr.wideZoom = mDoGph_gInf_c::isWideZoom();
 #endif
 }
 
@@ -254,7 +258,7 @@ void interp_view(::view_class* view) {
     if (!g_enabled)
         return;
 
-    if (!s_cam_prev.valid || !s_cam_curr.valid)
+    if (!s_camPrev.valid || !s_camCurr.valid)
         return;
 
     const f32 step = get_interpolation_step();
@@ -264,16 +268,16 @@ void interp_view(::view_class* view) {
     cXyz center;
     cXyz up;
     if (is_cam_curr_authoritative) {
-        eye = s_cam_curr.eye;
-        center = s_cam_curr.center;
-        up = s_cam_curr.up;
+        eye = s_camCurr.eye;
+        center = s_camCurr.center;
+        up = s_camCurr.up;
     } else {
-        lerp(eye, s_cam_prev.eye, s_cam_curr.eye, step);
-        lerp(center, s_cam_prev.center, s_cam_curr.center, step);
-        lerp(up, s_cam_prev.up, s_cam_curr.up, step);
+        lerp(eye, s_camPrev.eye, s_camCurr.eye, step);
+        lerp(center, s_camPrev.center, s_camCurr.center, step);
+        lerp(up, s_camPrev.up, s_camCurr.up, step);
     }
     if (!up.normalizeRS()) {
-        up = s_cam_curr.up;
+        up = s_camCurr.up;
         up.normalizeRS();
     }
 
@@ -281,24 +285,24 @@ void interp_view(::view_class* view) {
     view->lookat.center = center;
     view->lookat.up = up;
     if (is_cam_curr_authoritative) {
-        view->bank = s_cam_curr.bank;
-        view->fovy = s_cam_curr.fovy;
-        view->aspect = s_cam_curr.aspect;
-        view->near_ = s_cam_curr.near_;
-        view->far_ = s_cam_curr.far_;
+        view->bank = s_camCurr.bank;
+        view->fovy = s_camCurr.fovy;
+        view->aspect = s_camCurr.aspect;
+        view->near_ = s_camCurr.near_;
+        view->far_ = s_camCurr.far_;
     } else {
-        view->bank = lerp(s_cam_prev.bank, s_cam_curr.bank, step);
-        view->fovy = s_cam_prev.fovy + (s_cam_curr.fovy - s_cam_prev.fovy) * step;
-        view->aspect = s_cam_prev.aspect + (s_cam_curr.aspect - s_cam_prev.aspect) * step;
-        view->near_ = s_cam_prev.near_ + (s_cam_curr.near_ - s_cam_prev.near_) * step;
-        view->far_ = s_cam_prev.far_ + (s_cam_curr.far_ - s_cam_prev.far_) * step;
+        view->bank = lerp(s_camPrev.bank, s_camCurr.bank, step);
+        view->fovy = s_camPrev.fovy + (s_camCurr.fovy - s_camPrev.fovy) * step;
+        view->aspect = s_camPrev.aspect + (s_camCurr.aspect - s_camPrev.aspect) * step;
+        view->near_ = s_camPrev.near_ + (s_camCurr.near_ - s_camPrev.near_) * step;
+        view->far_ = s_camPrev.far_ + (s_camCurr.far_ - s_camPrev.far_) * step;
     }
 
     // FRAME INTERP TODO: It might be better if I rewired the game to not clear this flag until the
     // next sim frame, but I don't care enough to right now
 #if WIDESCREEN_SUPPORT
     const f32 wide_step = is_cam_curr_authoritative ? 1.0f : step;
-    if (mDoGph_gInf_c::isWide() && !mDoGph_gInf_c::isWideZoom() && wide_step >= 0.5f ? s_cam_curr.wideZoom : s_cam_prev.wideZoom) {
+    if (mDoGph_gInf_c::isWide() && !mDoGph_gInf_c::isWideZoom() && wide_step >= 0.5f ? s_camCurr.wideZoom : s_camPrev.wideZoom) {
         mDoGph_gInf_c::onWideZoom();
     }
 #endif
@@ -312,22 +316,22 @@ static void run_interpolation_callbacks() {
 }
 
 void add_interpolation_callback(InterpolationCallBack pCallBack, void* pUserWork) {
-    if (!is_enabled() || s_presentation_depth > 0 || !g_is_sim_frame) {
+    if (!is_enabled() || s_presentationDepth > 0 || !g_is_sim_frame) {
         return;
     }
 
     s_interpolationCallBackWork.emplace_back(pCallBack, pUserWork);
 }
 
-void begin_presentation_camera() {
+void begin_presentation() {
     if (!g_enabled) {
         return;
     }
-    if (s_presentation_depth > 0) {
-        s_presentation_depth++;
+    if (s_presentationDepth > 0) {
+        s_presentationDepth++;
         return;
     }
-    if (!s_cam_prev.valid || !s_cam_curr.valid) {
+    if (!s_camPrev.valid || !s_camCurr.valid) {
         return;
     }
 
@@ -336,7 +340,7 @@ void begin_presentation_camera() {
         return;
     }
 
-    std::memcpy(&s_presentation_view_backup, view, sizeof(view_class));
+    std::memcpy(&s_presentationViewBackup, view, sizeof(view_class));
     interp_view(view);
 
     // FRAME INTERP TODO: Largely copied from d_camera's camera_draw function from this point, got any better ideas?
@@ -397,23 +401,23 @@ void begin_presentation_camera() {
 
     // FRAME INTERP NOTE: Removed the call to offWideZoom that was here, it causes problems with presentation during cutscenes.
 
-    s_presentation_depth = 1;
+    s_presentationDepth = 1;
 
     run_interpolation_callbacks();
 }
 
-void end_presentation_camera() {
-    if (s_presentation_depth == 0) {
+void end_presentation() {
+    if (s_presentationDepth == 0) {
         return;
     }
-    s_presentation_depth--;
-    if (s_presentation_depth > 0) {
+    s_presentationDepth--;
+    if (s_presentationDepth > 0) {
         return;
     }
 
     view_class* const view = dComIfGd_getView();
     if (view != nullptr) {
-        std::memcpy(view, &s_presentation_view_backup, sizeof(view_class));
+        std::memcpy(view, &s_presentationViewBackup, sizeof(view_class));
     }
 }
 
