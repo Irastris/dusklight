@@ -6,7 +6,7 @@
 #include "SSystem/SComponent/c_counter.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #endif
 
 const u16 l_J_Ohana00_64TEX__width = 63;
@@ -1167,7 +1167,7 @@ void dFlower_packet_c::draw() {
                 if (!cLib_checkBit<u8>(sp44->m_state, 4) && !cLib_checkBit<u8>(sp44->m_state, 0x40)) {
 #ifdef TARGET_PC
                     Mtx flower_mtx;
-                    if (dusk::frame_interp::lookup_replacement(&sp44->m_modelMtx, flower_mtx)) {
+                    if (dusk::interp::lookup_replacement(&sp44->m_modelMtx, flower_mtx)) {
                         cMtx_concat(j3dSys.getViewMtx(), flower_mtx, flower_mtx);
                         GXLoadPosMtxImm(flower_mtx, 0);
                     } else
@@ -1326,7 +1326,7 @@ void dFlower_packet_c::draw() {
                 if (!cLib_checkBit<u8>(sp34->m_state, 4) && cLib_checkBit<u8>(sp34->m_state, 0x40)) {
 #ifdef TARGET_PC
                     Mtx flower_mtx;
-                    if (dusk::frame_interp::lookup_replacement(&sp34->m_modelMtx, flower_mtx)) {
+                    if (dusk::interp::lookup_replacement(&sp34->m_modelMtx, flower_mtx)) {
                         cMtx_concat(j3dSys.getViewMtx(), flower_mtx, flower_mtx);
                         GXLoadPosMtxImm(flower_mtx, 0);
                     } else
@@ -1465,7 +1465,7 @@ void dFlower_packet_c::update() {
                 mDoMtx_stack_c::scaleM(temp_f31, temp_f31, temp_f31);
                 cMtx_concat(j3dSys.getViewMtx(), temp_r28, data_p->m_modelMtx);
 #ifdef TARGET_PC
-                dusk::frame_interp::record_final_mtx(temp_r28, data_p->m_modelMtx);
+                dusk::interp::record_final_mtx(temp_r28, data_p->m_modelMtx);
 #endif
             }
         }

@@ -13,7 +13,8 @@
 #include "d/d_com_inf_game.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/dual_buffer.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/settings.h"
 
 static const int CHAIN_INTERP_MAX = 64;
@@ -21,7 +22,7 @@ static const int CHAIN_INTERP_MAX = 64;
 namespace {
 struct KLiftInterp {
     cXyz draw[CHAIN_INTERP_MAX];
-    dusk::frame_interp::DualBuffer<cXyz, CHAIN_INTERP_MAX> chain{draw};
+    dusk::interp::DualBuffer<cXyz, CHAIN_INTERP_MAX> chain{draw};
 };
 }  // namespace
 #endif
@@ -462,7 +463,7 @@ void daObjKLift00_c::onInterpPresentation() {
         savedPositions[i] = mChainPositions[i].mCurrentPos;
     }
 
-    auto& interp = dusk::frame_interp::get<KLiftInterp>(this);
+    auto& interp = dusk::interp::get<KLiftInterp>(this);
     for (int i = 0; i < mNumChains; i++) {
         mChainPositions[i].mCurrentPos = interp.draw[i];
     }
@@ -497,12 +498,12 @@ int daObjKLift00_c::Draw() {
     dComIfGd_setList();
 
 #if TARGET_PC
-    if (dusk::frame_interp::is_enabled() && mNumChains > 0 && mNumChains <= CHAIN_INTERP_MAX) {
+    if (dusk::interp::is_enabled() && mNumChains > 0 && mNumChains <= CHAIN_INTERP_MAX) {
         cXyz curr[CHAIN_INTERP_MAX];
         for (int i = 0; i < mNumChains; i++) {
             curr[i] = mChainPositions[i].mCurrentPos;
         }
-        dusk::frame_interp::get<KLiftInterp>(this).chain.capture_and_schedule(curr, mNumChains, &klift00_interp_post, this);
+        dusk::interp::get<KLiftInterp>(this).chain.capture_and_schedule(curr, mNumChains, &klift00_interp_post, this);
     }
 #endif
 

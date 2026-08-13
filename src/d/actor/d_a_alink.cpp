@@ -53,7 +53,8 @@
 
 #if TARGET_PC
 #include "dusk/action_bindings.h"
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/dual_buffer.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/settings.h"
 #include "res/Object/Alink.h"
 #include <cstring>
@@ -64,11 +65,11 @@ static const int HS_CHAIN_ANCHOR_COUNT = 4;
 
 namespace {
 struct AlinkInterp {
-    dusk::frame_interp::DualBuffer<cXyz, IRON_BALL_CHAIN_COUNT> ib_pos;
-    dusk::frame_interp::DualBuffer<csXyz, IRON_BALL_CHAIN_COUNT> ib_angle;
-    dusk::frame_interp::DualBuffer<cXyz, 1> ib_hand;
+    dusk::interp::DualBuffer<cXyz, IRON_BALL_CHAIN_COUNT> ib_pos;
+    dusk::interp::DualBuffer<csXyz, IRON_BALL_CHAIN_COUNT> ib_angle;
+    dusk::interp::DualBuffer<cXyz, 1> ib_hand;
     cXyz hs_draw[HS_CHAIN_ANCHOR_COUNT];
-    dusk::frame_interp::DualBuffer<cXyz, HS_CHAIN_ANCHOR_COUNT> hs_chain{hs_draw};
+    dusk::interp::DualBuffer<cXyz, HS_CHAIN_ANCHOR_COUNT> hs_chain{hs_draw};
 };
 }  // namespace
 #endif
@@ -6006,7 +6007,7 @@ void daAlink_c::setItemMatrix(int param_0) {
 
         mDoMtx_stack_c::XrotS(-0x8000);
 #ifdef TARGET_PC
-        if (dusk::frame_interp::is_enabled()) {
+        if (dusk::interp::is_enabled()) {
             Mtx boot_mtx;
             mDoMtx_concat(mpLinkModel->getAnmMtx(0x18), mDoMtx_stack_c::get(), boot_mtx);
             mpLinkBootModels[1]->setAnmMtx(1, boot_mtx);
@@ -14830,7 +14831,7 @@ void daAlink_c::deleteEquipItem(BOOL i_isPlaySound, BOOL i_isDeleteKantera) {
     field_0x3848 = NULL;
 #if TARGET_PC
     {
-        auto& interp = dusk::frame_interp::get<AlinkInterp>(this);
+        auto& interp = dusk::interp::get<AlinkInterp>(this);
         interp.ib_pos.reset();
         interp.ib_angle.reset();
         interp.ib_hand.reset();
@@ -19808,8 +19809,8 @@ int daAlink_c::draw() {
                 dComIfGd_getOpaListDark()->entryImm(mpHookChain, 0);
 
 #if TARGET_PC
-                if (dusk::frame_interp::is_enabled()) {
-                    auto& interp = dusk::frame_interp::get<AlinkInterp>(this);
+                if (dusk::interp::is_enabled()) {
+                    auto& interp = dusk::interp::get<AlinkInterp>(this);
                     if (mEquipItem == dItemNo_IRONBALL_e &&
                         mIronBallChainPos != NULL && mIronBallChainAngle != NULL)
                     {

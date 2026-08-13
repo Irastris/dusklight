@@ -14,7 +14,7 @@
 #include "m_Do/m_Do_mtx.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/logging.h"
 #include "helpers/gx_helper.h"
 
@@ -1081,7 +1081,7 @@ void dDlst_shadowReal_c::reset() {
 void dDlst_shadowReal_c::imageDraw(Mtx param_0) {
 #ifdef TARGET_PC
     Mtx render_proj_mtx;
-    if (dusk::frame_interp::lookup_replacement(getInterpKey(mpModels[0], 2), render_proj_mtx)) {
+    if (dusk::interp::lookup_replacement(getInterpKey(mpModels[0], 2), render_proj_mtx)) {
         GXSetProjection(render_proj_mtx, GX_ORTHOGRAPHIC);
     } else
 #endif
@@ -1102,7 +1102,7 @@ void dDlst_shadowReal_c::imageDraw(Mtx param_0) {
                 shape_pkt = (*models)->getShapePacket(j);
 #ifdef TARGET_PC
                 Mtx view_mtx;
-                if (dusk::frame_interp::lookup_replacement(getInterpKey(mpModels[0], 1), view_mtx)) {
+                if (dusk::interp::lookup_replacement(getInterpKey(mpModels[0], 1), view_mtx)) {
                     shape_pkt->setBaseMtxPtr(&view_mtx);
                 } else
 #endif
@@ -1131,8 +1131,8 @@ void dDlst_shadowReal_c::draw() {
     GXSetCurrentMtx(GX_PNMTX0);
 #ifdef TARGET_PC
     Mtx view_mtx, recv_proj_mtx;
-    const auto have_view_mtx = dusk::frame_interp::lookup_replacement(getInterpKey(mpModels[0], 1), view_mtx);
-    const auto have_recv_proj_mtx = dusk::frame_interp::lookup_replacement(getInterpKey(mpModels[0], 3), recv_proj_mtx);
+    const auto have_view_mtx = dusk::interp::lookup_replacement(getInterpKey(mpModels[0], 1), view_mtx);
+    const auto have_recv_proj_mtx = dusk::interp::lookup_replacement(getInterpKey(mpModels[0], 3), recv_proj_mtx);
     if (have_view_mtx && have_recv_proj_mtx) {
         cMtx_concat(recv_proj_mtx, view_mtx, recv_proj_mtx);
         GXLoadTexMtxImm(recv_proj_mtx, GX_TEXMTX0, GX_MTX3x4);
@@ -1300,9 +1300,9 @@ u8 dDlst_shadowReal_c::setShadowRealMtx(cXyz* param_0, cXyz* param_1, f32 param_
     
 #ifdef TARGET_PC
     const auto keybase = mpModels[0];
-    dusk::frame_interp::record_final_mtx(mViewMtx, getInterpKey(keybase, 1));
-    dusk::frame_interp::record_final_mtx(mRenderProjMtx, getInterpKey(keybase, 2));
-    dusk::frame_interp::record_final_mtx(mReceiverProjMtx, getInterpKey(keybase, 3));
+    dusk::interp::record_final_mtx(mViewMtx, getInterpKey(keybase, 1));
+    dusk::interp::record_final_mtx(mRenderProjMtx, getInterpKey(keybase, 2));
+    dusk::interp::record_final_mtx(mReceiverProjMtx, getInterpKey(keybase, 3));
 #endif
     cMtx_concat(mReceiverProjMtx, mViewMtx, mReceiverProjMtx);
     return r29;
@@ -1373,7 +1373,7 @@ void dDlst_shadowSimple_c::draw() {
     GXSetVtxDesc(GX_VA_POS, GX_INDEX8);
 #ifdef TARGET_PC
     Mtx volume_mtx;
-    if (dusk::frame_interp::lookup_replacement(mVolumeMtxKey, volume_mtx)) {
+    if (dusk::interp::lookup_replacement(mVolumeMtxKey, volume_mtx)) {
         cMtx_concat(j3dSys.getViewMtx(), volume_mtx, volume_mtx);
         GXLoadPosMtxImm(volume_mtx, GX_PNMTX0);
     } else
@@ -1388,7 +1388,7 @@ void dDlst_shadowSimple_c::draw() {
     GXCallDisplayList(l_shadowVolumeDL, 0x40);
 #ifdef TARGET_PC
     Mtx shadow_mtx;
-    if (dusk::frame_interp::lookup_replacement(mMtxKey, shadow_mtx)) {
+    if (dusk::interp::lookup_replacement(mMtxKey, shadow_mtx)) {
         cMtx_concat(j3dSys.getViewMtx(), shadow_mtx, shadow_mtx);
         GXLoadPosMtxImm(shadow_mtx, GX_PNMTX1);
     } else
@@ -1450,7 +1450,7 @@ void dDlst_shadowSimple_c::set(cXyz* param_0, f32 param_1, f32 param_2, cXyz* pa
     mDoMtx_stack_c::scaleM(param_2, f30 + f30 + 16.0f, param_2 * param_5);
 #if TARGET_PC
     mVolumeMtxKey = getInterpKey(param_0, 0x1);
-    dusk::frame_interp::record_final_mtx(mDoMtx_stack_c::get(), mVolumeMtxKey);
+    dusk::interp::record_final_mtx(mDoMtx_stack_c::get(), mVolumeMtxKey);
 #endif
     cMtx_concat(j3dSys.getViewMtx(), mDoMtx_stack_c::get(), mVolumeMtx);
     f32 f31 = JMAFastSqrt(1.0f - param_3->x * param_3->x);
@@ -1479,7 +1479,7 @@ void dDlst_shadowSimple_c::set(cXyz* param_0, f32 param_1, f32 param_2, cXyz* pa
     mDoMtx_stack_c::scaleM(param_2, 1.0f, param_2 * param_5);
 #ifdef TARGET_PC
     mMtxKey = getInterpKey(param_0, 0x2);
-    dusk::frame_interp::record_final_mtx(mDoMtx_stack_c::get(), mMtxKey);
+    dusk::interp::record_final_mtx(mDoMtx_stack_c::get(), mMtxKey);
 #endif
     cMtx_concat(j3dSys.getViewMtx(), mDoMtx_stack_c::get(), mMtx);
     mpTexObj = param_6;
@@ -1642,7 +1642,7 @@ void dDlst_shadowControl_c::draw(Mtx param_0) {
     GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 #ifdef TARGET_PC
     Mtx draw_mtx;
-    if (dusk::frame_interp::lookup_replacement(param_0, draw_mtx)) {
+    if (dusk::interp::lookup_replacement(param_0, draw_mtx)) {
         GXLoadPosMtxImm(draw_mtx, GX_PNMTX0);
     } else {
 #endif

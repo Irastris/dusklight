@@ -32,11 +32,13 @@
 #include "JSystem/JKernel/JKRSolidHeap.h"
 #include <cstdlib>
 #include <cstring>
+
 #if TARGET_PC
-#include "dusk/imgui/ImGuiBloomWindow.hpp"
-#include "dusk/settings.h"
-#include "dusk/frame_interpolation.h"
 #include "dusk/game_clock.h"
+#include "dusk/imgui/ImGuiBloomWindow.hpp"
+#include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/lerp.h"
+#include "dusk/settings.h"
 static f32 timeScale = 1.0f;
 #endif
 

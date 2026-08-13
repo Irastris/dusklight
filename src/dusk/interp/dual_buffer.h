@@ -1,84 +1,18 @@
 #pragma once
 
-#include "settings.h"
+#include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/lerp.h"
 
-#include "SSystem/SComponent/c_angle.h"
-#include "SSystem/SComponent/c_sxyz.h"
-#include "SSystem/SComponent/c_xyz.h"
-
-#include <cmath>
 #include <cstring>
 #include <dolphin/mtx.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-class camera_process_class;
-class view_class;
-
 #ifdef __cplusplus
-namespace dusk::frame_interp {
+namespace dusk::interp {
 
-void begin_record();
-void end_record();
-void begin_sim_tick();
-uint64_t sim_tick_seq();
-void begin_frame(FrameInterpMode mode, bool is_sim_frame, float step);
-void interpolate();
-float get_interpolation_step();
-
-void request_presentation_sync();
-bool presentation_sync_active();
-
-bool is_enabled();
-
-// TODO: These should be phased out as UI is progressively updated to use game_clock
-void set_ui_tick_pending(bool value);
-bool get_ui_tick_pending();
-
-bool is_sim_frame();
-bool is_presentation_frame();
-
-void record_camera(::camera_process_class* cam, int camera_id);
-void interp_view(::view_class* view);
-void record_final_mtx(Mtx m, const void *key);
-void record_final_mtx(Mtx m);
-
-bool lookup_replacement(const void* key, Mtx out);
-bool lookup_concat_replacement(const void* lhs, const void* rhs, Mtx out);
-
-typedef void (*InterpolationCallBack)(void* pUserWork);
-void add_interpolation_callback(InterpolationCallBack pCallBack, void* pUserWork);
-
-void begin_presentation();
-void end_presentation();
-
-inline s16 lerp(s16 lhs, s16 rhs, float step) {
-    const f32 ra = S2RAD(lhs);
-    const f32 d = remainderf(S2RAD(rhs) - ra, 2.0f * M_PI);
-    return cAngle::Radian_to_SAngle(ra + d * step);
-}
-
-inline void lerp(cXyz& out, const cXyz& lhs, const cXyz& rhs, float step) {
-    out.x = lhs.x + (rhs.x - lhs.x) * step;
-    out.y = lhs.y + (rhs.y - lhs.y) * step;
-    out.z = lhs.z + (rhs.z - lhs.z) * step;
-}
-
-inline void lerp(csXyz& out, const csXyz& lhs, const csXyz& rhs, float step) {
-    out.x = lerp(lhs.x, rhs.x, step);
-    out.y = lerp(lhs.y, rhs.y, step);
-    out.z = lerp(lhs.z, rhs.z, step);
-}
-
-inline void lerp(Mtx& out, const Mtx& lhs, const Mtx& rhs, float step) {
-    for (size_t row = 0; row < 3; ++row) {
-        for (size_t col = 0; col < 4; ++col) {
-            const float l = lhs[row][col];
-            out[row][col] = l + (rhs[row][col] - l) * step;
-        }
-    }
-}
+template <typename T, int capacity, int strand_count>
+class DualBufferGroup;
 
 template <typename T, int capacity>
 class DualBuffer {
@@ -102,6 +36,34 @@ public:
     }
 
     bool ready() const { return m_prev_valid && m_curr_valid; }
+
+    void capture_and_schedule(const T* src, int count, void (*post)(void*) = NULL,
+                              void* post_user = NULL) {
+        roll();
+        capture(src, count);
+        schedule(post, post_user);
+    }
+
+    void writeback(T* src_and_dst, int count, void (*post)(void*) = NULL, void* post_user = NULL) {
+        bind(src_and_dst);
+        capture_and_schedule(src_and_dst, count, post, post_user);
+    }
+
+    void writeback_on_sim_tick(T* src_and_dst, int count, void (*post)(void*) = NULL,
+                               void* post_user = NULL) {
+        bind(src_and_dst);
+        capture_on_sim(src_and_dst, count);
+        schedule(post, post_user);
+    }
+
+    void capture_on_sim(const T* src, int count) {
+        on_sim_tick();
+        capture(src, count);
+    }
+
+private:
+    template <typename U, int C, int S>
+    friend class DualBufferGroup;
 
     bool fits(int count) const {
         if (count > capacity) {
@@ -146,30 +108,6 @@ public:
         add_interpolation_callback(&present_trampoline, this);
     }
 
-    void capture_on_sim(const T* src, int count) {
-        on_sim_tick();
-        capture(src, count);
-    }
-
-    void capture_and_schedule(const T* src, int count, void (*post)(void*) = NULL, void* post_user = NULL) {
-        roll();
-        capture(src, count);
-        schedule(post, post_user);
-    }
-
-    void writeback(T* src_and_dst, int count, void (*post)(void*) = NULL, void* post_user = NULL) {
-        bind(src_and_dst);
-        capture_and_schedule(src_and_dst, count, post, post_user);
-    }
-
-    void writeback_on_sim_tick(T* src_and_dst, int count, void (*post)(void*) = NULL,
-                               void* post_user = NULL) {
-        bind(src_and_dst);
-        capture_on_sim(src_and_dst, count);
-        schedule(post, post_user);
-    }
-
-private:
     static void present_trampoline(void* user) {
         static_cast<DualBuffer*>(user)->present();
     }
@@ -222,7 +160,8 @@ public:
         finish_post(post, post_user);
     }
 
-    void writeback(T* const* src_and_dst, int count, void (*post)(void*) = NULL, void* post_user = NULL) {
+    void writeback(T* const* src_and_dst, int count, void (*post)(void*) = NULL,
+                   void* post_user = NULL) {
         for (int i = 0; i < strand_count; ++i) {
             m_buffers[i].writeback(src_and_dst[i], count);
         }
@@ -254,5 +193,5 @@ Record& get(const void* key) {
 void erase_owned_buffers(const void* key);
 void clear_owned_buffers();
 
-}  // namespace dusk::frame_interp
+}  // namespace dusk::interp
 #endif

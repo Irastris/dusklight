@@ -10,7 +10,7 @@
 #include "JSystem/JKernel/JKRHeap.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #endif
 
 #define J3D_ASSERTMSG(LINE, COND, MSG) JUT_ASSERT_MSG(LINE, (COND) != 0, MSG)
@@ -109,7 +109,7 @@ void J3DModel::interp_callback(void* pUserWork) {
 
 void J3DModel::setAnmMtx(int jointNo, Mtx m) {
     mMtxBuffer->setAnmMtx(jointNo, m);
-    dusk::frame_interp::record_final_mtx(mMtxBuffer->getAnmMtx(jointNo));
+    dusk::interp::record_final_mtx(mMtxBuffer->getAnmMtx(jointNo));
 }
 #endif
 
@@ -468,11 +468,11 @@ void J3DModel::calc() {
 
 #ifdef TARGET_PC
     for (u16 i = 0; i < mModelData->getJointNum(); ++i) {
-        dusk::frame_interp::record_final_mtx(getAnmMtx(i));
+        dusk::interp::record_final_mtx(getAnmMtx(i));
     }
 
     for (u16 i = 0; i < mModelData->getWEvlpMtxNum(); ++i) {
-        dusk::frame_interp::record_final_mtx(getWeightAnmMtx(i));
+        dusk::interp::record_final_mtx(getWeightAnmMtx(i));
     }
 #endif
 }
@@ -504,7 +504,7 @@ void J3DModel::entry() {
 
 #if TARGET_PC
     if (mModelData->needsInterpCallBack())
-        dusk::frame_interp::add_interpolation_callback(&J3DModel::interp_callback, this);
+        dusk::interp::add_interpolation_callback(&J3DModel::interp_callback, this);
 #endif
 }
 
@@ -517,7 +517,7 @@ void J3DModel::viewCalc() {
             J3DCalcViewBaseMtx(j3dSys.getViewMtx(), mBaseScale, mBaseTransformMtx,
                                (MtxP)&mInternalView);
 #ifdef TARGET_PC
-            dusk::frame_interp::record_final_mtx(mInternalView);
+            dusk::interp::record_final_mtx(mInternalView);
 #endif
         }
     } else if (isCpuSkinningOn()) {
@@ -525,7 +525,7 @@ void J3DModel::viewCalc() {
             J3DCalcViewBaseMtx(j3dSys.getViewMtx(), mBaseScale, mBaseTransformMtx,
                                (MtxP)&mInternalView);
 #ifdef TARGET_PC
-            dusk::frame_interp::record_final_mtx(mInternalView);
+            dusk::interp::record_final_mtx(mInternalView);
 #endif
         }
     } else if (checkFlag(J3DMdlFlag_SkinPosCpu)) {
@@ -551,7 +551,7 @@ void J3DModel::viewCalc() {
     Mtx* drawMtx = getDrawMtxPtr();
     if (drawMtx != J3DMtxBuffer::sNoUseDrawMtxPtr) {
         for (u16 i = 0; i < mModelData->getDrawMtxNum(); ++i) {
-            dusk::frame_interp::record_final_mtx(drawMtx[i]);
+            dusk::interp::record_final_mtx(drawMtx[i]);
         }
     }
 #endif

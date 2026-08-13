@@ -47,9 +47,9 @@
 
 #if TARGET_PC
 #include "dusk/dusk.h"
-#include "dusk/frame_interpolation.h"
 #include "dusk/gfx.hpp"
 #include "dusk/imgui/ImGuiConsole.hpp"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/logging.h"
 #include "dusk/settings.h"
 #include "helpers/endian.h"
@@ -475,7 +475,7 @@ void darwFilter(GXColor matColor) {
 
 void mDoGph_gInf_c::calcFade() {
 #if TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
+    if (dusk::interp::get_ui_tick_pending())
 #endif
     {
         if (mFade != 0) {
@@ -504,8 +504,8 @@ void mDoGph_gInf_c::calcFade() {
 
     if (mFadeColor.a != 0) {
 #ifdef TARGET_PC
-        if (dusk::frame_interp::is_enabled() && mFade != 0) {
-            const auto step = dusk::frame_interp::get_interpolation_step();
+        if (dusk::interp::is_enabled() && mFade != 0) {
+            const auto step = dusk::interp::get_interpolation_step();
             const auto progress = mFadeSpeed < 0.0f ? 1.0f - mFadeRate : mFadeRate;
             const auto fade_amt = mFadeRate + mFadeSpeed * (step - 1.0f + progress);
             mFadeColor.a = 255.0f * std::clamp(fade_amt, 0.0f, 1.0f);
@@ -2170,7 +2170,7 @@ static void captureScreenPerspDrawInfo(JPADrawInfo& info) {
 static void drawItem3D() {
     ZoneScoped;
 #ifdef TARGET_PC
-    if (dusk::frame_interp::is_enabled()) {
+    if (dusk::interp::is_enabled()) {
         // FRAME INTERP NOTE: Title screen needs 0.0f while everything else that runs through this is -100.0f.
         if (fopAcM_SearchByName(fpcNm_TITLE_e) != nullptr) {
             dMenu_Collect3D_c::setViewPortOffsetY(0.0f);
@@ -2214,7 +2214,7 @@ int mDoGph_Painter() {
     #endif
 
 #ifdef TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
+    if (dusk::interp::get_ui_tick_pending())
 #endif
     {
         dComIfGp_particle_calcMenu();
@@ -2348,7 +2348,7 @@ int mDoGph_Painter() {
 #endif
             dKy_setLight();
 #if TARGET_PC
-            if (dusk::frame_interp::is_enabled()) {
+            if (dusk::interp::is_enabled()) {
                 dKy_setLight_again();
             }
 #endif
@@ -2411,7 +2411,7 @@ int mDoGph_Painter() {
             }
 
 #if TARGET_PC
-            if (dusk::frame_interp::is_enabled()) {
+            if (dusk::interp::is_enabled()) {
                 g_dComIfG_gameInfo.drawlist.refresh3DlineMats(camera_p->view.lookat.eye);
             }
 #endif
@@ -2771,7 +2771,7 @@ int mDoGph_Painter() {
 
     GXSetClipMode(GX_CLIP_ENABLE);
 #if TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
+    if (dusk::interp::get_ui_tick_pending())
 #endif
     {
         dDlst_list_c::calcWipe();

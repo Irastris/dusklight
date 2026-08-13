@@ -2,14 +2,14 @@
 
 #include "d/d_select_icon.h"
 #include "JSystem/J2DGraph/J2DAnimation.h"
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 
 dSi_HIO_c::dSi_HIO_c() {}
 
 void dSelect_icon_c::animation() {
     if (field_0x10->getAlpha() != 0) {
 #ifdef TARGET_PC
-        if (dusk::frame_interp::get_ui_tick_pending())
+        if (dusk::interp::get_ui_tick_pending())
 #endif
         {
             field_0x20 += field_0x2c;

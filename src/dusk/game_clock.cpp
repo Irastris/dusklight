@@ -1,6 +1,6 @@
 #include "dusk/game_clock.h"
 
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 
 #include <aurora/time.hpp>
 

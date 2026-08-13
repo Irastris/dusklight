@@ -16,7 +16,7 @@
 #include "d/d_meter2_info.h"
 #include "d/d_meter_HIO.h"
 #include "d/d_pane_class.h"
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include <cstring>
 
 dMeterString_c::dMeterString_c(int i_stringID) {
@@ -107,7 +107,7 @@ void dMeterString_c::draw() {
 
             if (mAnimFrame < 60.0f) {
 #if TARGET_PC
-                if (dusk::frame_interp::get_ui_tick_pending())
+                if (dusk::interp::get_ui_tick_pending())
 #endif
                 {
                     mAnimFrame += g_drawHIO.mMiniGame.mReadyFightTextAnimSpeed;
@@ -119,12 +119,12 @@ void dMeterString_c::draw() {
                 playBckAnimation(mAnimFrame);
             } else if (mAnimFrame < (f32)g_drawHIO.mMiniGame.mReadyFightTextWaitFrames + 60.0f) {
 #if TARGET_PC
-                if (dusk::frame_interp::get_ui_tick_pending())
+                if (dusk::interp::get_ui_tick_pending())
 #endif
                     mAnimFrame += var_f30;
             } else if (mAnimFrame < var_f31) {
 #if TARGET_PC
-                if (dusk::frame_interp::get_ui_tick_pending())
+                if (dusk::interp::get_ui_tick_pending())
 #endif
                     mAnimFrame += var_f30;
                 var_f30 = acc(g_drawHIO.mMiniGame.field_0x172, var_f31 - mAnimFrame, 0);
@@ -141,7 +141,7 @@ void dMeterString_c::draw() {
                 drawPikari();
             } else if (mPikariAnimFrame == -1.0f &&
 #if TARGET_PC
-                       dusk::frame_interp::get_ui_tick_pending() &&
+                       dusk::interp::get_ui_tick_pending() &&
 #endif
                        mAnimFrame > g_drawHIO.mMiniGame.mReadyFightPikariAppearFrames)
             {
@@ -149,7 +149,7 @@ void dMeterString_c::draw() {
             }
 
 #if TARGET_PC
-            if (dusk::frame_interp::get_ui_tick_pending())
+            if (dusk::interp::get_ui_tick_pending())
 #endif
             {
                 if (mAnimFrame >= var_f31) {

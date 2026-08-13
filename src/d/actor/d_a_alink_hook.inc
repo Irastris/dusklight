@@ -10,7 +10,7 @@
 #include "JSystem/J3DGraphBase/J3DMaterial.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/settings.h"
 
 static const int HS_CHAIN_MAX_LINKS = 600;
@@ -137,8 +137,8 @@ void daAlink_c::hsChainShape_c::draw() {
     } else {
 #if TARGET_PC
         cXyz hsInterpTop, hsInterpRoot, hsInterpSubRoot, hsInterpSubTop;
-        auto& hsInterp = dusk::frame_interp::get<AlinkInterp>(alink);
-        if (dusk::frame_interp::is_enabled() && hsInterp.hs_chain.ready()) {
+        auto& hsInterp = dusk::interp::get<AlinkInterp>(alink);
+        if (dusk::interp::is_enabled() && hsInterp.hs_chain.ready()) {
             hsInterpTop     = hsInterp.hs_draw[0];
             hsInterpRoot    = hsInterp.hs_draw[1];
             hsInterpSubRoot = hsInterp.hs_draw[2];

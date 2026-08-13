@@ -21,7 +21,7 @@
 #include "m_Do/m_Do_graphic.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/settings.h"
 #endif
 
@@ -597,7 +597,7 @@ void dMsgScrnHowl_c::drawWave() {
                 f18 = local_64;
             } else {
 #if TARGET_PC
-                if (dusk::frame_interp::get_ui_tick_pending())
+                if (dusk::interp::get_ui_tick_pending())
 #endif
                 {
                     field_0x2134++;

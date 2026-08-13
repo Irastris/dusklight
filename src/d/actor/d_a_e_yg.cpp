@@ -13,12 +13,12 @@
 #include "f_op/f_op_actor_enemy.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/dual_buffer.h"
 #include "dusk/settings.h"
 
 static const int TENTACLE_STRAND_COUNT = 13;
 static const int TENTACLE_SEGMENT_COUNT = 10;
-typedef dusk::frame_interp::DualBufferGroup<cXyz, TENTACLE_SEGMENT_COUNT, TENTACLE_STRAND_COUNT> TentacleInterp;
+typedef dusk::interp::DualBufferGroup<cXyz, TENTACLE_SEGMENT_COUNT, TENTACLE_STRAND_COUNT> TentacleInterp;
 #endif
 
 enum E_yg_RES_File_ID {
@@ -190,7 +190,7 @@ static int daE_YG_Draw(e_yg_class* i_this) {
     for (int s = 0; s < TENTACLE_STRAND_COUNT; s++) {
         srcs[s] = i_this->mLineMat.getPos(s);
     }
-    dusk::frame_interp::get<TentacleInterp>(i_this).writeback(srcs, TENTACLE_SEGMENT_COUNT, &daE_YG_interp_post, i_this);
+    dusk::interp::get<TentacleInterp>(i_this).writeback(srcs, TENTACLE_SEGMENT_COUNT, &daE_YG_interp_post, i_this);
 #endif
 
     dComIfGd_setList();

@@ -13,11 +13,11 @@
 #include <cstring>
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/dual_buffer.h"
 #include "dusk/settings.h"
 
 static const int CHAIN_COUNT = 22;
-typedef dusk::frame_interp::DualBuffer<cXyz, CHAIN_COUNT> ChainInterp;
+typedef dusk::interp::DualBuffer<cXyz, CHAIN_COUNT> ChainInterp;
 #endif
 
 static char const l_arcName[] = "Fchain";
@@ -306,7 +306,7 @@ int daObjFchain_c::draw() {
         }
         dComIfGd_getOpaListDark()->entryImm(&mShape, 0);
 
-        IF_DUSK(dusk::frame_interp::get<ChainInterp>(this).writeback(field_0x694, CHAIN_COUNT));
+        IF_DUSK(dusk::interp::get<ChainInterp>(this).writeback(field_0x694, CHAIN_COUNT));
     }
     return 1;
 }

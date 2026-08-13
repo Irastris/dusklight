@@ -20,7 +20,7 @@
 #include <cstring>
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/ui/touch_controls.hpp"
 #include "dusk/version.hpp"
 
@@ -359,7 +359,7 @@ void dMenu_Fmap2DBack_c::draw() {
     }
 
 #ifdef TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
+    if (dusk::interp::get_ui_tick_pending())
 #endif
     {
         blinkMove(30);
@@ -400,7 +400,7 @@ void dMenu_Fmap2DBack_c::draw() {
                         &mArrowPos2DY);
 
 #ifdef TARGET_PC
-        if (dusk::frame_interp::get_ui_tick_pending())
+        if (dusk::interp::get_ui_tick_pending())
 #endif
         {
             field_0x11e0 -= g_fmapHIO.mCursorSpeed;
@@ -448,7 +448,7 @@ void dMenu_Fmap2DBack_c::draw() {
     if (field_0x122d) {
         mpMeterHaihai->drawHaihai(field_0x122d);
 #if TARGET_PC
-        if (!dusk::frame_interp::is_enabled()) {
+        if (!dusk::interp::is_enabled()) {
             field_0x122d = 0;
         }
 #else
@@ -1869,7 +1869,7 @@ void dMenu_Fmap2DBack_c::calcBlink() {
                                       g_fmapHIO.mMapBlink[i].mUnselectedRegion.mBlinkSpeed);
 
 #if TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
+    if (dusk::interp::get_ui_tick_pending())
 #endif
     {
         field_0x1218++;

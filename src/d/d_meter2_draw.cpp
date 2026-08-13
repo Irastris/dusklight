@@ -23,7 +23,7 @@
 #include <cstring>
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/settings.h"
 #include "dusk/ui/icon_provider.hpp"
 #include "dusk/version.hpp"
@@ -772,7 +772,7 @@ void dMeter2Draw_c::draw() {
 #ifdef TARGET_PC
             // FRAME INTERP NOTE: Set even if not advancing
             var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete;
-            if (dusk::frame_interp::get_ui_tick_pending())
+            if (dusk::interp::get_ui_tick_pending())
 #endif
             {
                 if (field_0x756 <= temp_r5_2) {
@@ -1495,7 +1495,7 @@ void dMeter2Draw_c::drawPikari(f32 i_posX, f32 i_posY, f32* i_framep, f32 i_scal
         *i_framep = 0.0f;
     } else {
 #ifdef TARGET_PC
-        if (dusk::frame_interp::get_ui_tick_pending())
+        if (dusk::interp::get_ui_tick_pending())
 #endif
         {
             *i_framep += param_8;

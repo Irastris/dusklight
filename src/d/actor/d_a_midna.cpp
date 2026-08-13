@@ -16,7 +16,7 @@
 #include "d/d_debug_viewer.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #endif
 
 static f32 dummy_lit_3777(int idx, u8 foo) {
@@ -1113,7 +1113,7 @@ void daMidna_c::setBodyPartMatrix() {
 #ifdef TARGET_PC
         // FRAME INTERP NOTE: Record weight envelopes for Midna here, as they are otherwise missed causing distortion
         for (u16 i = 0; i < mpModel->getModelData()->getWEvlpMtxNum(); i++) {
-            dusk::frame_interp::record_final_mtx(mpModel->getWeightAnmMtx(i));
+            dusk::interp::record_final_mtx(mpModel->getWeightAnmMtx(i));
         }
 #endif
     }

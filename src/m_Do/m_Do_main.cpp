@@ -43,13 +43,13 @@
 #include "dusk/data.hpp"
 #include "dusk/discord_presence.hpp"
 #include "dusk/dusk.h"
-#include "dusk/frame_interpolation.h"
 #include "dusk/game_clock.h"
 #include "dusk/game_combos.h"
 #include "dusk/gyro.h"
 #include "dusk/hq_minimap.hpp"
 #include "dusk/imgui/ImGuiConsole.hpp"
 #include "dusk/imgui/ImGuiEngine.hpp"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/iso_validate.hpp"
 #include "dusk/logging.h"
 #include "dusk/main.h"
@@ -285,11 +285,11 @@ void main01(void) {
         const auto interpolationMode = dusk::getSettings().game.enableFrameInterpolation.getValue();
         if (timing.separatePresentation) {
             if (timing.numSimTicks > 0) {
-                dusk::frame_interp::begin_frame(interpolationMode, true, 0.0f);
-                dusk::frame_interp::set_ui_tick_pending(true);
+                dusk::interp::begin_frame(interpolationMode, true, 0.0f);
+                dusk::interp::set_ui_tick_pending(true);
                 for (int i = 0; i < timing.numSimTicks; ++i) {
                     if (timing.interpolating) {
-                        dusk::frame_interp::begin_sim_tick();
+                        dusk::interp::begin_sim_tick();
                     }
                     dusk::game_clock::begin_sim_tick();
                     mDoCPd_c::read();
@@ -305,21 +305,21 @@ void main01(void) {
 
             const float interpolationStep =
                 timing.interpolating ? dusk::game_clock::sample_interpolation_step() : 1.0f;
-            dusk::frame_interp::begin_frame(interpolationMode, false, interpolationStep);
+            dusk::interp::begin_frame(interpolationMode, false, interpolationStep);
             if (timing.interpolating) {
-                dusk::frame_interp::interpolate();
-                dusk::frame_interp::begin_presentation();
+                dusk::interp::interpolate();
+                dusk::interp::begin_presentation();
             }
 
             fpcM_DrawIterater((fpcM_DrawIteraterFunc)fpcM_Draw);
             cAPIGph_Painter();
             if (timing.interpolating) {
-                dusk::frame_interp::end_presentation();
+                dusk::interp::end_presentation();
             }
-            dusk::frame_interp::set_ui_tick_pending(false);
+            dusk::interp::set_ui_tick_pending(false);
         } else {
-            dusk::frame_interp::begin_frame(dusk::FrameInterpMode::Off, true, 0.0f);
-            dusk::frame_interp::set_ui_tick_pending(true);
+            dusk::interp::begin_frame(dusk::FrameInterpMode::Off, true, 0.0f);
+            dusk::interp::set_ui_tick_pending(true);
             dusk::game_clock::begin_sim_tick();
 
             // Game Inputs

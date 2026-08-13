@@ -13,10 +13,10 @@
 #include "f_op/f_op_kankyo_mng.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/dual_buffer.h"
 
 static const int LINE_SEGMENT_COUNT = 12;
-typedef dusk::frame_interp::DualBuffer<cXyz, LINE_SEGMENT_COUNT> LineInterp;
+typedef dusk::interp::DualBuffer<cXyz, LINE_SEGMENT_COUNT> LineInterp;
 #endif
 
 class daE_YH_HIO_c : public JORReflexible {
@@ -121,7 +121,7 @@ static int daE_YH_Draw(e_yh_class* i_this) {
 
     i_this->mLine.update(12, l_color, &a_this->tevStr);
     dComIfGd_set3DlineMat(&i_this->mLine);
-    IF_DUSK(dusk::frame_interp::get<LineInterp>(i_this).writeback(i_this->mLine.getPos(0), LINE_SEGMENT_COUNT));
+    IF_DUSK(dusk::interp::get<LineInterp>(i_this).writeback(i_this->mLine.getPos(0), LINE_SEGMENT_COUNT));
 
     for (int i = 1; i < 11; i++) {
         if (i_this->mModels[i] != NULL) {

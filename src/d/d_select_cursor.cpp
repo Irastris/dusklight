@@ -5,7 +5,7 @@
 #include "d/d_com_inf_game.h"
 #include "JSystem/J2DGraph/J2DAnimation.h"
 #include "JSystem/J2DGraph/J2DAnmLoader.h"
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include <cstring>
 
 dSelect_cursorHIO_c::dSelect_cursorHIO_c() {
@@ -282,7 +282,7 @@ void dSelect_cursor_c::update() {
         if (field_0x30) {
             if (chkPlayAnime(0)) {
 #ifdef TARGET_PC
-                if (dusk::frame_interp::get_ui_tick_pending())
+                if (dusk::interp::get_ui_tick_pending())
 #endif
                 {
                     if (mNameIdx == 1) {
@@ -311,7 +311,7 @@ void dSelect_cursor_c::update() {
             if (field_0x34[i]) {
                 if ((i == 0 && chkPlayAnime(2)) || (i == 1 && chkPlayAnime(3))) {
 #ifdef TARGET_PC
-                    if (dusk::frame_interp::get_ui_tick_pending())
+                    if (dusk::interp::get_ui_tick_pending())
 #endif
                     {
                         if (mNameIdx == 1) {
@@ -332,7 +332,7 @@ void dSelect_cursor_c::update() {
 
         if (field_0x2C && chkPlayAnime(1)) {
 #ifdef TARGET_PC
-            if (dusk::frame_interp::get_ui_tick_pending())
+            if (dusk::interp::get_ui_tick_pending())
 #endif
             {
                 if (mNameIdx == 1) {
@@ -352,7 +352,7 @@ void dSelect_cursor_c::update() {
 
         if (chkPlayAnime(1) && mNameIdx == 0) {
 #ifdef TARGET_PC
-            if (dusk::frame_interp::get_ui_tick_pending())
+            if (dusk::interp::get_ui_tick_pending())
 #endif
             {
                 setCursorAnimation();

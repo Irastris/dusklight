@@ -13,10 +13,10 @@
 #include "f_op/f_op_actor_enemy.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/dual_buffer.h"
 
 static const int LINE_SEGMENT_COUNT = 12;
-typedef dusk::frame_interp::DualBuffer<cXyz, LINE_SEGMENT_COUNT> LineInterp;
+typedef dusk::interp::DualBuffer<cXyz, LINE_SEGMENT_COUNT> LineInterp;
 #endif
 
 class daE_YD_HIO_c {
@@ -93,7 +93,7 @@ static s32 daE_YD_Draw(e_yd_class* i_this) {
     i_this->mpMorf->entryDL();
     i_this->mLineMat.update(12, l_color, &i_this->actor.tevStr);
     dComIfGd_set3DlineMat(&i_this->mLineMat);
-    IF_DUSK(dusk::frame_interp::get<LineInterp>(i_this).writeback(i_this->mLineMat.getPos(0), LINE_SEGMENT_COUNT));
+    IF_DUSK(dusk::interp::get<LineInterp>(i_this).writeback(i_this->mLineMat.getPos(0), LINE_SEGMENT_COUNT));
     for (s32 i = 1; i < 11; i++) {
         if (i_this->field_0x77c[i] != 0) {
             g_env_light.setLightTevColorType_MAJI(i_this->field_0x77c[i], &i_this->actor.tevStr);

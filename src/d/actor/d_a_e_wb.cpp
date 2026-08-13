@@ -22,13 +22,14 @@
 
 #if TARGET_PC
 #include "dusk/dusk.h"
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/dual_buffer.h"
+#include "dusk/interp/frame_interpolation.h"
 
 static const int HIMO_STRAND_COUNT = 2;
 static const int HIMO_SEGMENT_COUNT = 16;
 static const int HIMO_TEX_COUNT = 2;
-typedef dusk::frame_interp::DualBufferGroup<cXyz, HIMO_SEGMENT_COUNT, HIMO_STRAND_COUNT> HimoInterp;
-typedef dusk::frame_interp::DualBuffer<cXyz, HIMO_TEX_COUNT> HimoTexInterp;
+typedef dusk::interp::DualBufferGroup<cXyz, HIMO_SEGMENT_COUNT, HIMO_STRAND_COUNT> HimoInterp;
+typedef dusk::interp::DualBuffer<cXyz, HIMO_TEX_COUNT> HimoTexInterp;
 #endif
 
 class daE_WB_HIO_c : public JORReflexible {
@@ -519,11 +520,11 @@ static int daE_WB_Draw(e_wb_class* i_this) {
         i_this->himo_tex.update(2, l_color, &actor->tevStr);
         dComIfGd_set3DlineMat(&i_this->himo_tex);
 #if TARGET_PC
-        auto& himo = dusk::frame_interp::get<HimoInterp>(i_this);
+        auto& himo = dusk::interp::get<HimoInterp>(i_this);
         for (int r = 0; r < HIMO_STRAND_COUNT; r++) {
             himo[r].writeback(i_this->himo_mat[r].getPos(0), HIMO_SEGMENT_COUNT);
         }
-        dusk::frame_interp::get<HimoTexInterp>(i_this).writeback(i_this->himo_tex.getPos(0), HIMO_TEX_COUNT);
+        dusk::interp::get<HimoTexInterp>(i_this).writeback(i_this->himo_tex.getPos(0), HIMO_TEX_COUNT);
 #endif
     }
 
@@ -4518,7 +4519,7 @@ static void demo_camera(e_wb_class* i_this) {
             i_this->demo_cam_way_spd.z = fabsf(i_this->demo_cam_way.z - i_this->demo_cam_ctr.z);
             i_this->demo_cam_morf = 0;
             pla->setPlayerPosAndAngle(&pla->current.pos, pla->shape_angle.y - 4000, 0);
-            IF_DUSK(dusk::frame_interp::request_presentation_sync());
+            IF_DUSK(dusk::interp::request_presentation_sync());
         }
         if (i_this->demo_timer == 345) {
             daPy_getPlayerActorClass()->setThrowDamage(boss->enemy.shape_angle.y - 8000 + TREG_S(8),
@@ -4765,7 +4766,7 @@ static void demo_camera(e_wb_class* i_this) {
                     i_this->demo_cam_eye.x += 300.0f + VREG_F(8);
                     i_this->demo_cam_eye.y += 150.0f + VREG_F(9);
                     i_this->demo_cam_eye.z -= 1400.0f + VREG_F(10);
-                    IF_DUSK(dusk::frame_interp::request_presentation_sync());
+                    IF_DUSK(dusk::interp::request_presentation_sync());
                 }
             } else {
                 i_this->demo_cam_eye = enemy->current.pos;
@@ -5026,7 +5027,7 @@ static void demo_camera(e_wb_class* i_this) {
         i_this->demo_cam_sync_ticks = 2;
     }
     if (i_this->demo_cam_sync_ticks > 0) {
-        dusk::frame_interp::request_presentation_sync();
+        dusk::interp::request_presentation_sync();
         i_this->demo_cam_sync_ticks--;
     }
 #endif

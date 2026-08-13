@@ -6,7 +6,7 @@
 #include "d/dolzel_rel.h" // IWYU pragma: keep
 
 #include "d/actor/d_a_balloon_2D.h"
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "JSystem/J2DGraph/J2DGrafContext.h"
 #include "JSystem/J2DGraph/J2DScreen.h"
 #include "JSystem/J2DGraph/J2DTextBox.h"
@@ -440,7 +440,7 @@ void daBalloon2D_c::drawAddScore() {
     for (s32 i = 19; i >= 0; i--) {
         if (field_0x5f8[i].field_0xe != 0) {
 #ifdef TARGET_PC
-            if (dusk::frame_interp::get_ui_tick_pending())
+            if (dusk::interp::get_ui_tick_pending())
 #endif
             {
                 field_0x5f8[i].field_0xe--;
@@ -453,7 +453,7 @@ void daBalloon2D_c::drawAddScore() {
             f32 dVar11 = 30.0f;
             f32 dVar9 = 30.0f;
 #ifdef TARGET_PC
-            if (dusk::frame_interp::get_ui_tick_pending())
+            if (dusk::interp::get_ui_tick_pending())
 #endif
             {
                 field_0x5f8[i].field_0x0.x += cM_ssin(temp0) * 0.3f;

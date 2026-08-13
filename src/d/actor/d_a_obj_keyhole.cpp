@@ -12,7 +12,7 @@
 #include "Z2AudioLib/Z2Instances.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/dual_buffer.h"
 
 static const int CHAIN_STRAND_COUNT = 6;
 static const int CHAIN_SEGMENT_MAX = 16;
@@ -20,7 +20,7 @@ static const int CHAIN_SEGMENT_MAX = 16;
 namespace {
 struct KeyholeInterp {
     Mtx draw[CHAIN_STRAND_COUNT][CHAIN_SEGMENT_MAX];
-    dusk::frame_interp::DualBufferGroup<Mtx, CHAIN_SEGMENT_MAX, CHAIN_STRAND_COUNT> chain;
+    dusk::interp::DualBufferGroup<Mtx, CHAIN_SEGMENT_MAX, CHAIN_STRAND_COUNT> chain;
 };
 }  // namespace
 #endif
@@ -77,7 +77,7 @@ static int daObj_Keyhole_Draw(obj_keyhole_class* i_this) {
 
 #if TARGET_PC
     if (i_this->chain_num > 0 && i_this->chain_num <= CHAIN_SEGMENT_MAX) {
-        dusk::frame_interp::get<KeyholeInterp>(i_this).chain.schedule(&keyhole_chain_interp_post, i_this);
+        dusk::interp::get<KeyholeInterp>(i_this).chain.schedule(&keyhole_chain_interp_post, i_this);
     }
 #endif
 
@@ -397,7 +397,7 @@ static void chain_move(obj_keyhole_class* i_this) {
 
 #if TARGET_PC
     if (i_this->chain_num > 0 && i_this->chain_num <= CHAIN_SEGMENT_MAX) {
-        auto& interp = dusk::frame_interp::get<KeyholeInterp>(i_this);
+        auto& interp = dusk::interp::get<KeyholeInterp>(i_this);
         Mtx curr[CHAIN_SEGMENT_MAX];
         for (int i = 0; i < CHAIN_STRAND_COUNT; i++) {
             for (int j = 0; j < i_this->chain_num; j++) {
@@ -412,7 +412,7 @@ static void chain_move(obj_keyhole_class* i_this) {
 #if TARGET_PC
 static void keyhole_chain_interp_post(void* pUserWork) {
     obj_keyhole_class* i_this = (obj_keyhole_class*)pUserWork;
-    auto& interp = dusk::frame_interp::get<KeyholeInterp>(i_this);
+    auto& interp = dusk::interp::get<KeyholeInterp>(i_this);
     for (int i = 0; i < CHAIN_STRAND_COUNT; i++) {
         for (int j = 0; j < i_this->chain_num; j++) {
             i_this->chain_s[i].model[j]->setBaseTRMtx(interp.draw[i][j]);
@@ -800,7 +800,7 @@ static int daObj_Keyhole_Create(fopAc_ac_c* a_this) {
         }
 
 #if TARGET_PC
-        auto& interp = dusk::frame_interp::get<KeyholeInterp>(i_this);
+        auto& interp = dusk::interp::get<KeyholeInterp>(i_this);
         for (int i = 0; i < CHAIN_STRAND_COUNT; i++) {
             interp.chain[i].bind(interp.draw[i]);
         }

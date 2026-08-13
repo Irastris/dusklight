@@ -22,7 +22,7 @@
 #include "m_Do/m_Do_graphic.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/menu_pointer.h"
 #include "dusk/mods/svc/save.hpp"
 #include "dusk/settings.h"
@@ -829,7 +829,7 @@ void dMenu_save_c::saveSelAnm() {
 
 void dMenu_save_c::selFileWakuAnm() {
 #if TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
+    if (dusk::interp::get_ui_tick_pending())
 #endif
     {
         mFileWakuAnmFrame += 2;
@@ -848,7 +848,7 @@ void dMenu_save_c::selFileWakuAnm() {
 
 void dMenu_save_c::bookIconAnm() {
 #if TARGET_PC
-    if (dusk::frame_interp::get_ui_tick_pending())
+    if (dusk::interp::get_ui_tick_pending())
 #endif
     {
         field_0x154 += 2;

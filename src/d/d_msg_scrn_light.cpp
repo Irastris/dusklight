@@ -8,7 +8,7 @@
 #include "d/d_pane_class.h"
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #endif
 
 class dMsgScrnLight_HIO_c {
@@ -207,7 +207,7 @@ void dMsgScrnLight_c::draw(f32* i_anmFrame, f32 i_posX, f32 i_posY, f32 i_scaleX
 
     if (mPlayAnim) {
 #ifdef TARGET_PC
-        if (dusk::frame_interp::get_ui_tick_pending())
+        if (dusk::interp::get_ui_tick_pending())
 #endif
         {
             *i_anmFrame += 1.0f;
@@ -230,7 +230,7 @@ void dMsgScrnLight_c::draw(f32* i_anmFrame, f32 i_posX, f32 i_posY, f32 i_scaleX
 
     if (mPlayAnim) {
 #ifdef TARGET_PC
-        if (dusk::frame_interp::get_ui_tick_pending())
+        if (dusk::interp::get_ui_tick_pending())
 #endif
         {
             *i_anmFrame += i_anmRate;

@@ -15,7 +15,7 @@
 
 #include "dusk/version.hpp"
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #endif
 
 static void vectle_calc(DOUBLE_POS* i_pos, cXyz* o_out) {
@@ -6208,7 +6208,7 @@ static void dKyr_evil_draw2(Mtx drawMtx, u8** tex) {
 #endif
 
 #if TARGET_PC
-        if (dusk::frame_interp::get_ui_tick_pending())
+        if (dusk::interp::get_ui_tick_pending())
 #endif
         {
             rot += 0.7f;
@@ -6452,7 +6452,7 @@ void dKyr_evil_draw(Mtx drawMtx, u8** tex) {
 #endif
 
 #if TARGET_PC
-        if (dusk::frame_interp::get_ui_tick_pending())
+        if (dusk::interp::get_ui_tick_pending())
 #endif
         {
             rot += 1.0f;

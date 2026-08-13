@@ -22,10 +22,10 @@
 
 #if TARGET_PC
 #include "dusk/dusk.h"
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/dual_buffer.h"
 
 static const int REIN_INTERP_MAX = 75;
-typedef dusk::frame_interp::DualBuffer<cXyz, REIN_INTERP_MAX> ReinInterp;
+typedef dusk::interp::DualBuffer<cXyz, REIN_INTERP_MAX> ReinInterp;
 #endif
 
 #define ANM_HS_BACK_WALK           6
@@ -3025,7 +3025,7 @@ void daHorse_c::copyReinPos() {
         *pos_p = rein->field_0x0[0][i];
     }
 #if TARGET_PC
-    auto& reinInterp = dusk::frame_interp::get<ReinInterp>(this);
+    auto& reinInterp = dusk::interp::get<ReinInterp>(this);
     if (field_0x1204 > 0 && field_0x1204 <= REIN_INTERP_MAX) {
         reinInterp.writeback_on_sim_tick(m_reinLine.getPos(0), field_0x1204);
     } else {

@@ -17,12 +17,12 @@
 #include <cstring>
 
 #if TARGET_PC
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/dual_buffer.h"
 #include "dusk/settings.h"
 
 static const int HAIR_STRAND_COUNT = 22;
 static const int HAIR_SEGMENT_COUNT = 16;
-typedef dusk::frame_interp::DualBufferGroup<cXyz, HAIR_SEGMENT_COUNT, HAIR_STRAND_COUNT> HairInterp;
+typedef dusk::interp::DualBufferGroup<cXyz, HAIR_SEGMENT_COUNT, HAIR_STRAND_COUNT> HairInterp;
 #endif
 
 class daE_S1_HIO_c {
@@ -160,7 +160,7 @@ static int daE_S1_Draw(e_s1_class* i_this) {
     for (int s = 0; s < HAIR_STRAND_COUNT; s++) {
         srcs[s] = i_this->mLineMat.getPos(s);
     }
-    dusk::frame_interp::get<HairInterp>(i_this).writeback(srcs, HAIR_SEGMENT_COUNT, &daE_S1_interp_post, i_this);
+    dusk::interp::get<HairInterp>(i_this).writeback(srcs, HAIR_SEGMENT_COUNT, &daE_S1_interp_post, i_this);
 #endif
 
     dComIfGd_setList();

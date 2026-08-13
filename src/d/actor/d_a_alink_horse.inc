@@ -362,7 +362,7 @@ void daAlink_c::setHorseStirrup() {
         horse->calcWeightEnvMtx();
 #if TARGET_PC
         for (u16 i = 0; i < horse->m_model->getModelData()->getWEvlpMtxNum(); i++) {
-            dusk::frame_interp::record_final_mtx(horse->m_model->getWeightAnmMtx(i));
+            dusk::interp::record_final_mtx(horse->m_model->getWeightAnmMtx(i));
         }
 #endif
     }

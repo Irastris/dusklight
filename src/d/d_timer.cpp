@@ -23,7 +23,7 @@
 #include "m_Do/m_Do_lib.h"
 #include <cstring>
 
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/version.hpp"
 
 static int dTimer_createStart2D(s32 param_0, u16 param_1);
@@ -1341,7 +1341,7 @@ void dDlst_TimerScrnDraw_c::draw() {
 
     for (int i = 0; i < 51; i++) {
 #if TARGET_PC
-        if (dusk::frame_interp::get_ui_tick_pending())
+        if (dusk::interp::get_ui_tick_pending())
 #endif
         {
             if (m_getin_info[i].bck_frame > 0.0f && m_getin_info[i].bck_frame < temp) {
@@ -1397,7 +1397,7 @@ void dDlst_TimerScrnDraw_c::draw() {
                 drawPikari(i);
             } else if (m_getin_info[i].pikari_frame == -1.0f) {
 #if TARGET_PC
-                if (dusk::frame_interp::get_ui_tick_pending())
+                if (dusk::interp::get_ui_tick_pending())
 #endif
                 {
                     if (m_getin_info[i].field_0xc == 0) {

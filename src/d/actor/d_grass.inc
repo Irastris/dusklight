@@ -13,7 +13,7 @@
 
 #if TARGET_PC
 #include "dusk/dvd_asset.hpp"
-#include "dusk/frame_interpolation.h"
+#include "dusk/interp/frame_interpolation.h"
 
 using GameVersion = dusk::version::GameVersion;
 
@@ -608,7 +608,7 @@ dGrass_packet_c::dGrass_packet_c() {
 
 #if TARGET_PC
 static MtxP get_model_mtx(Mtx modelMtx, Mtx storage) {
-    if (dusk::frame_interp::lookup_replacement(modelMtx, storage)) {
+    if (dusk::interp::lookup_replacement(modelMtx, storage)) {
         cMtx_concat(j3dSys.getViewMtx(), storage, storage);
         return storage;
     }
@@ -1195,7 +1195,7 @@ void dGrass_packet_c::draw() {
                 if (!cLib_checkBit<u8>(var_r29->field_0x01, 2)) {
 #ifdef TARGET_PC
                     Mtx grass_mtx;
-                    if (dusk::frame_interp::lookup_replacement(reinterpret_cast<const void*>(&var_r29->m_modelMtx), grass_mtx)) {
+                    if (dusk::interp::lookup_replacement(reinterpret_cast<const void*>(&var_r29->m_modelMtx), grass_mtx)) {
                         cMtx_concat(j3dSys.getViewMtx(), grass_mtx, grass_mtx);
                         GXLoadPosMtxImm(grass_mtx, 0);
                     } else
@@ -1459,7 +1459,7 @@ void dGrass_packet_c::update() {
                     cMtx_concat(j3dSys.getViewMtx(), mDoMtx_stack_c::get(), data_p->m_modelMtx);
                 }
 #ifdef TARGET_PC
-                dusk::frame_interp::record_final_mtx(mDoMtx_stack_c::get(), data_p->m_modelMtx);
+                dusk::interp::record_final_mtx(mDoMtx_stack_c::get(), data_p->m_modelMtx);
 #endif
             }
         }

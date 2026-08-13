@@ -24,9 +24,9 @@
 #if TARGET_PC
 #include "dusk/achievements.h"
 #include "dusk/autosave.h"
-#include "dusk/frame_interpolation.h"
 #include "dusk/game_mode.hpp"
 #include "dusk/gamepad_color.h"
+#include "dusk/interp/frame_interpolation.h"
 #include "dusk/logging.h"
 #include "dusk/menu_pointer.h"
 #include "dusk/mod_loader.hpp"
@@ -735,11 +735,11 @@ void fapGm_After() {
 
 #ifdef TARGET_PC
 static void fapGm_Before() {
-    dusk::frame_interp::begin_record();
+    dusk::interp::begin_record();
 }
 
 static void fapGm_AfterRecord() {
-    dusk::frame_interp::end_record();
+    dusk::interp::end_record();
     fapGm_After();
 }
 
