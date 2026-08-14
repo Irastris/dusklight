@@ -15,9 +15,11 @@
 namespace dusk::interp {
 void camera_on_sim_tick();
 void camera_on_begin_record();
-bool camera_apply_presentation();
+void camera_apply_presentation();
 void camera_restore_presentation();
-void camera_invalidate_snapshots();
+void clear_camera();
+void actor_pose_on_sim_tick();
+void clear_actor_pose();
 }  // namespace dusk::interp
 
 namespace {
@@ -128,9 +130,10 @@ void clear_interpolation_history() {
     s_previousRecording = {};
     s_currentRecording = {};
     clear_replacements();
+    dusk::interp::clear_actor_pose();
     dusk::interp::clear_owned_buffers();
     clear_callbacks();
-    dusk::interp::camera_invalidate_snapshots();
+    dusk::interp::clear_camera();
     s_presentationDepth = 0;
 }
 
@@ -145,6 +148,7 @@ void begin_sim_tick() {
 
     clear_callbacks();
     camera_on_sim_tick();
+    actor_pose_on_sim_tick();
     ++s_simTickSeq;
 }
 
@@ -273,11 +277,9 @@ void begin_presentation(float step) {
         s_presentationDepth++;
         return;
     }
-    if (!camera_apply_presentation()) {
-        return;
-    }
 
     s_presentationDepth = 1;
+    camera_apply_presentation();
     callbacks_run_begin();
 }
 

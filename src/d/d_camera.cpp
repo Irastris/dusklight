@@ -11138,6 +11138,73 @@ dCamera_c* dCam_getBody() {
     return &camera->mCamera;
 }
 
+#if TARGET_PC
+void dCam_applyPresentedView(view_class* view) {
+    if (view == nullptr) {
+        return;
+    }
+
+    C_MTXPerspective(view->projMtx, view->fovy, view->aspect, view->near_, view->far_);
+    mDoMtx_lookAt(view->viewMtx, &view->lookat.eye, &view->lookat.center, &view->lookat.up,
+                  view->bank);
+#if WIDESCREEN_SUPPORT
+    mDoGph_gInf_c::setWideZoomProjection(view->projMtx);
+#endif
+    j3dSys.setViewMtx(view->viewMtx);
+    cMtx_inverse(view->viewMtx, view->invViewMtx);
+
+    bool camera_attention_status = dComIfGp_getCameraAttentionStatus(0) & 0x80;
+    Z2GetAudience()->setAudioCamera(view->viewMtx, view->lookat.eye, view->lookat.center,
+                                    view->fovy, view->aspect, camera_attention_status, 0, false);
+
+    dBgS_GndChk gndchk;
+    gndchk.OnWaterGrp();
+    gndchk.SetPos(&view->lookat.eye);
+    f32 cross = dComIfG_Bgsp().GroundCross(&gndchk);
+    if (cross != -G_CM3D_F_INF) {
+        if (dComIfG_Bgsp().ChkGrpInf(gndchk, 0x100)) {
+            mDoAud_getCameraMapInfo(6);
+        } else {
+            mDoAud_getCameraMapInfo(dComIfG_Bgsp().GetMtrlSndId(gndchk));
+        }
+        mDoAud_setCameraGroupInfo(dComIfG_Bgsp().GetGrpSoundId(gndchk));
+        Vec spDC;
+        spDC.x = view->lookat.eye.x;
+        spDC.y = cross;
+        spDC.z = view->lookat.eye.z;
+        Z2AudioMgr::getInterface()->setCameraPolygonPos(&spDC);
+    } else {
+        Z2AudioMgr::getInterface()->setCameraPolygonPos(nullptr);
+    }
+
+    MTXCopy(view->viewMtx, view->viewMtxNoTrans);
+    view->viewMtxNoTrans[0][3] = 0.0f;
+    view->viewMtxNoTrans[1][3] = 0.0f;
+    view->viewMtxNoTrans[2][3] = 0.0f;
+    cMtx_concatProjView(view->projMtx, view->viewMtx, view->projViewMtx);
+
+    f32 far_;
+    f32 var_f30;
+    if (dComIfGp_getCameraAttentionStatus(0) & 8) {
+        far_ = view->far_;
+    } else {
+#if DEBUG
+        if (g_envHIO.mOther.mAdjustCullFar != 0) {
+            var_f30 = g_envHIO.mOther.mCullFarValue;
+        } else
+#endif
+        {
+            var_f30 = dStage_stagInfo_GetCullPoint(dComIfGp_getStageStagInfo());
+        }
+        far_ = var_f30;
+    }
+
+    mDoLib_clipper::setup(view->fovy, view->aspect, view->near_, far_);
+    // FRAME INTERP NOTE: Removed the call to offWideZoom that was here, it causes problems with
+    // presentation during cutscenes.
+}
+#endif
+
 static void preparation(camera_process_class* i_this) {
     camera_process_class* process = i_this;
     camera_class* a_this = (camera_class*)i_this;
@@ -11590,6 +11657,12 @@ static int init_phase2(camera_class* i_this) {
 
     JKR_NEW_ARGS (body) dCamera_c(i_this);
 
+#if TARGET_PC
+    if (body->CameraID() == 0) {
+        dusk::interp::reset_camera();
+    }
+#endif
+
     f32 var_f31 = 0.0f;
     f32 var_f30 = 160000.0f;
 
@@ -11644,6 +11717,9 @@ static int camera_delete(camera_process_class* i_this) {
     dCamera_c* camera = &i_this->mCamera;
 
     if (camera->CameraID() == 0) {
+#if TARGET_PC
+        dusk::interp::reset_camera();
+#endif
 #if DEBUG
         dDbgCamera.Finish();
 #endif

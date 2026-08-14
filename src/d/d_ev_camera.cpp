@@ -14,6 +14,7 @@
 #include <cstring>
 
 #if TARGET_PC
+#include "dusk/interp/frame_interpolation.h"
 #include "helpers/string.hpp"
 
 #define LOAD_4BYTE_STRING_LITERAL(x) read_big_endian_u32(x)
@@ -2407,6 +2408,9 @@ bool dCamera_c::tactEvCamera() {
             }
 
             if (tact_p->field_0x0 < 20) {
+#if TARGET_PC
+                dusk::interp::request_presentation_sync();
+#endif
                 tact_p->field_0x0 = 20;
             }
 
@@ -2419,11 +2423,19 @@ bool dCamera_c::tactEvCamera() {
 
         case 3:
             if (tact_p->field_0x0 < 22) {
+#if TARGET_PC
+                dusk::interp::request_presentation_sync();
+#endif
                 tact_p->field_0x0 = 22;
             }
             break;
 
         case 1:
+#if TARGET_PC
+            if (tact_p->field_0x0 != 0) {
+                dusk::interp::request_presentation_sync();
+            }
+#endif
             tact_p->field_0x0 = 0;
             break;
 

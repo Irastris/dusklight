@@ -2,6 +2,8 @@
 #include "ImGuiConsole.hpp"
 #include "ImGuiMenuTools.hpp"
 
+#include "dusk/interp/actor_pose.h"
+#include "dusk/interp/camera.h"
 #include "dusk/settings.h"
 
 #include "d/d_com_inf_game.h"
@@ -10,6 +12,51 @@
 #include "SSystem/SComponent/c_xyz.h"
 
 #include <imgui.h>
+
+namespace {
+
+const char* interpolation_kind_name(dusk::interp::CameraInterpolationKind kind) {
+    using Kind = dusk::interp::CameraInterpolationKind;
+    switch (kind) {
+    case Kind::Unavailable:
+        return "Unavailable";
+    case Kind::Authoritative:
+        return "Authoritative";
+    case Kind::Previous:
+        return "Previous";
+    case Kind::Linear:
+        return "Linear fallback";
+    case Kind::Orbit:
+        return "Target-relative orbit";
+    case Kind::SemanticOrbit:
+        return "Semantic orbit";
+    }
+    return "Unknown";
+}
+
+const char* fallback_reason_name(
+    dusk::interp::CameraInterpolationFallbackReason reason) {
+    using Reason = dusk::interp::CameraInterpolationFallbackReason;
+    switch (reason) {
+    case Reason::None:
+        return "none";
+    case Reason::MissingSnapshots:
+        return "missing snapshots";
+    case Reason::IncompatibleCamera:
+        return "camera transition";
+    case Reason::UnsupportedAlgorithm:
+        return "unsupported algorithm";
+    case Reason::MissingTarget:
+        return "missing target";
+    case Reason::TargetChanged:
+        return "target changed";
+    case Reason::TargetPoseUnavailable:
+        return "target pose unavailable";
+    }
+    return "unknown";
+}
+
+}  // namespace
 
 namespace dusk {
     void ImGuiMenuTools::ShowCameraOverlay() {
@@ -55,6 +102,42 @@ namespace dusk {
         if (ImGui::InputFloat("Camera FOV", &dCam->mFovy)) {
             dCam->mFovy = std::clamp(dCam->mFovy, 0.1f, 179.9f);
         }
+
+        const auto& interpolation = interp::camera_interpolation_diagnostics();
+        ImGui::SeparatorText("Presentation");
+        ImGui::Text("Interpolation: %s", interpolation_kind_name(interpolation.kind));
+        if (interpolation.valid) {
+            ImGui::Text("Tick / alpha: %llu / %.3f",
+                        static_cast<unsigned long long>(interpolation.simTickSeq),
+                        interpolation.step);
+            ImGui::Text("Camera frames / rebase: %.3f / %s", interpolation.cameraFrames,
+                        interpolation.rebased ? "yes" : "no");
+            ImGui::Text("Algorithm / mode / type / style: %d / %d / %d / %d",
+                        interpolation.algorithm, interpolation.mode, interpolation.type,
+                        interpolation.style);
+            ImGui::Text("Radius prev / shown / curr: %.2f / %.2f / %.2f",
+                        interpolation.previousRadius, interpolation.presentedRadius,
+                        interpolation.currentRadius);
+            ImGui::Text("Linear radius at alpha: %.2f", interpolation.linearRadius);
+            ImGui::Text("Linear radius error / max: %.2f / %.2f",
+                        interpolation.linearRadiusError,
+                        interpolation.maxLinearRadiusError);
+            ImGui::Text("Compatible rig: %s", interpolation.compatibleRig ? "yes" : "no");
+            ImGui::Text("Actor anchored: %s", interpolation.actorAnchored ? "yes" : "no");
+            ImGui::Text("Collision / correction / max: %s / %.2f / %.2f",
+                        interpolation.collisionHit ? "hit" : "clear",
+                        interpolation.collisionCorrection,
+                        interpolation.maxCollisionCorrection);
+            ImGui::Text("Presentation collision hits: %llu",
+                        static_cast<unsigned long long>(interpolation.collisionHitCount));
+            if (interpolation.fallbackReason !=
+                interp::CameraInterpolationFallbackReason::None)
+            {
+                ImGui::Text("Fallback: %s",
+                            fallback_reason_name(interpolation.fallbackReason));
+            }
+        }
+        ImGui::Text("Recorded actor poses: %zu", interp::recorded_actor_pose_count());
 
         ImGui::SeparatorText("Options");
 

@@ -20,6 +20,7 @@
 #include "m_Do/m_Do_printf.h"
 
 #if TARGET_PC
+#include "dusk/interp/actor_pose.h"
 #include "dusk/interp/dual_buffer.h"
 #endif
 
@@ -376,6 +377,10 @@ static int fopAc_Execute(void* i_this) {
     fapGm_HIO_c::stopCpuTimer(message);
     #endif
 
+#if TARGET_PC
+    dusk::interp::capture_actor_pose(actor);
+#endif
+
     return ret;
 }
 
@@ -418,6 +423,7 @@ static int fopAc_Delete(void* i_this) {
 
     if (ret == TRUE) {
 #if TARGET_PC
+        dusk::interp::erase_actor_pose(actor);
         dusk::interp::erase_owned_buffers(actor);
 #endif
         fopAcTg_ActorQTo(&actor->actor_tag);

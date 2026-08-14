@@ -1400,5 +1400,6 @@ camera_class* dCam_getCamera();
 s16 dCam_getControledAngleY(camera_class* param_0);
 s16 dCam_getAngleX(camera_class* i_cam);
 s16 dCam_getAngleY(camera_class* i_cam);
+IF_DUSK(void dCam_applyPresentedView(view_class* view));
 
 #endif /* D_D_CAMERA_H */
