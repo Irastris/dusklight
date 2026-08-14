@@ -34,6 +34,7 @@
 #include "dusk/commands.hpp"
 #include "dusk/interp/camera.h"
 #include "dusk/interp/frame_interpolation.h"
+#include "dusk/game_clock.h"
 #include "dusk/logging.h"
 #include "dusk/mouse.h"
 #include "dusk/settings.h"
@@ -11360,7 +11361,7 @@ void widezoom_correction(camera_process_class* i_this, float trim_height) {
             trim_width = FB_WIDTH_BASE / 2.0f * (1.0f - target_ar_real / current_ar);
         }
 
-        if (dusk::interp::is_sim_frame()) {
+        if (dusk::game_clock::is_sim_frame()) {
             constexpr auto base_ar =
                 static_cast<f32>(FB_WIDTH_BASE) / static_cast<f32>(FB_HEIGHT_BASE);
             const auto ar_corr = base_ar / std::min(current_ar, target_ar_real);

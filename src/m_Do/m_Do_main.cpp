@@ -282,10 +282,9 @@ void main01(void) {
         dusk::ui::update();
 
         const auto timing = dusk::game_clock::advance();
-        const auto interpolationMode = dusk::getSettings().game.enableFrameInterpolation.getValue();
         if (timing.separatePresentation) {
             if (timing.numSimTicks > 0) {
-                dusk::interp::begin_frame(interpolationMode, true, 0.0f);
+                dusk::interp::begin_frame(0.0f);
                 dusk::interp::set_ui_tick_pending(true);
                 for (int i = 0; i < timing.numSimTicks; ++i) {
                     if (timing.interpolating) {
@@ -303,22 +302,14 @@ void main01(void) {
                 }
             }
 
-            const float interpolationStep =
-                timing.interpolating ? dusk::game_clock::sample_interpolation_step() : 1.0f;
-            dusk::interp::begin_frame(interpolationMode, false, interpolationStep);
-            if (timing.interpolating) {
-                dusk::interp::interpolate();
-                dusk::interp::begin_presentation();
-            }
-
+            const float step = timing.interpolating ? dusk::game_clock::sample_interpolation_step() : 1.0f;
+            dusk::interp::begin_presentation(step);
             fpcM_DrawIterater((fpcM_DrawIteraterFunc)fpcM_Draw);
             cAPIGph_Painter();
-            if (timing.interpolating) {
-                dusk::interp::end_presentation();
-            }
+            dusk::interp::end_presentation();
             dusk::interp::set_ui_tick_pending(false);
         } else {
-            dusk::interp::begin_frame(dusk::FrameInterpMode::Off, true, 0.0f);
+            dusk::interp::begin_frame(0.0f);
             dusk::interp::set_ui_tick_pending(true);
             dusk::game_clock::begin_sim_tick();
 

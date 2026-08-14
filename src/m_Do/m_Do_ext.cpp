@@ -27,6 +27,7 @@
 
 #if TARGET_PC
 #include "dusk/interp/frame_interpolation.h"
+#include "dusk/game_clock.h"
 #include "dusk/logging.h"
 #include "dusk/version.hpp"
 #endif
@@ -314,7 +315,7 @@ static void mDoExt_modelDiff(J3DModel* i_model) {
     i_model->calcMaterial();
     i_model->diff();
 #if TARGET_PC
-    if (!dusk::interp::is_sim_frame()) {
+    if (!dusk::game_clock::is_sim_frame()) {
         return;
     }
 #endif
@@ -360,7 +361,7 @@ void mDoExt_modelUpdateDL(J3DModel* i_model) {
 
 void mDoExt_modelEntryDL(J3DModel* i_model) {
 #if TARGET_PC
-    if (!dusk::interp::is_sim_frame()) {
+    if (!dusk::game_clock::is_sim_frame()) {
         // FRAME INTERP NOTE: This fixes issue #355 where some lights would flicker.
         // This is likely better solved by updating J3DMaterial::needsInterpCallBack,
         // but it's unclear what exactly needs to be added.
@@ -3654,12 +3655,22 @@ void mDoExt_cylinderMPacket::draw() {
     GXSetCullMode(GX_CULL_BACK);
     GXSetClipMode(GX_CLIP_ENABLE);
 
+#if TARGET_PC
+    Mtx modelViewMtx;
+    cMtx_concat(j3dSys.getViewMtx(), mMatrix, modelViewMtx);
+    GXLoadPosMtxImm(modelViewMtx, 0);
+
+    Mtx normalMtx;
+    cMtx_inverseTranspose(modelViewMtx, normalMtx);
+    GXLoadNrmMtxImm(normalMtx, 0);
+#else
     cMtx_concat(j3dSys.getViewMtx(), mMatrix, mMatrix);
 
     GXLoadPosMtxImm(mMatrix, 0);
     cMtx_inverseTranspose(mMatrix, mMatrix);
 
     GXLoadNrmMtxImm(mMatrix, 0);
+#endif
     GXSetCurrentMtx(0);
 
     GXDrawCylinder(8);

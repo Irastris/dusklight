@@ -1,5 +1,6 @@
 #include "dusk/interp/camera.h"
 
+#include "dusk/game_clock.h"
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/interp/lerp.h"
 
@@ -128,7 +129,7 @@ void interp_view(::view_class* view) {
         return;
 
     const f32 step = get_interpolation_step();
-    const bool is_cam_curr_authoritative = is_sim_frame() && step <= 0.0f;
+    const bool is_cam_curr_authoritative = game_clock::is_sim_frame() && step <= 0.0f;
 
     cXyz eye;
     cXyz center;

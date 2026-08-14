@@ -26,6 +26,7 @@
 #include "SSystem/SComponent/c_math.h"
 
 #if TARGET_PC
+#include "dusk/game_clock.h"
 #include "dusk/interp/frame_interpolation.h"
 
 #include <tracy/Tracy.hpp>
@@ -1976,7 +1977,7 @@ void dPa_light8PcallBack::draw(JPABaseEmitter* param_1, JPABaseParticle* param_2
     JGeometry::TVec3<f32> local_160;
     JGeometry::TVec3<f32> local_16c;
 #if TARGET_PC
-    if (dusk::interp::is_sim_frame())
+    if (dusk::game_clock::is_sim_frame())
 #endif
     {
         dPa_setWindPower(param_2);
