@@ -1462,9 +1462,12 @@ set(DUSK_FILES
         src/dusk/imgui/ImGuiStateShare.hpp
         src/dusk/imgui/ImGuiStubLog.cpp
         src/dusk/interp/actor_pose.cpp
+        src/dusk/interp/anim.cpp
         src/dusk/interp/camera.cpp
         src/dusk/interp/dual_buffer.cpp
         src/dusk/interp/frame_interpolation.cpp
+        src/dusk/interp/matrix.cpp
+        src/dusk/interp/skeleton.cpp
         src/dusk/io.cpp
         src/dusk/iso_validate.cpp
         src/dusk/language.cpp

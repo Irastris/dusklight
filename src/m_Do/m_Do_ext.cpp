@@ -28,6 +28,7 @@
 #if TARGET_PC
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/game_clock.h"
+#include "dusk/interp/skeleton.h"
 #include "dusk/logging.h"
 #include "dusk/version.hpp"
 #endif
@@ -1526,6 +1527,9 @@ void mDoExt_McaMorf::modelCalc() {
 
         mpModel->getModelData()->getJointNodePointer(0)->setMtxCalc(this);
         mpModel->calc();
+#if TARGET_PC
+        dusk::interp::skeleton::capture_morph(this);
+#endif
     }
 }
 
@@ -1794,6 +1798,9 @@ void mDoExt_McaMorfSO::updateDL() {
 
         mpModel->getModelData()->getJointNodePointer(0)->setMtxCalc(this);
         mDoExt_modelUpdateDL(mpModel);
+#if TARGET_PC
+        dusk::interp::skeleton::capture_morph(this);
+#endif
         mPrevMorf = mCurMorf;
     }
 }
@@ -1812,6 +1819,9 @@ void mDoExt_McaMorfSO::modelCalc() {
 
         mpModel->getModelData()->getJointNodePointer(0)->setMtxCalc(this);
         mpModel->calc();
+#if TARGET_PC
+        dusk::interp::skeleton::capture_morph(this);
+#endif
     }
 }
 
@@ -2197,6 +2207,9 @@ void mDoExt_McaMorf2::modelCalc() {
 
         mpModel->getModelData()->getJointNodePointer(0)->setMtxCalc(this);
         mpModel->calc();
+#if TARGET_PC
+        dusk::interp::skeleton::capture_morph(this);
+#endif
     }
 }
 

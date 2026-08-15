@@ -3,6 +3,8 @@
 #include "dusk/game_clock.h"
 #include "dusk/interp/dual_buffer.h"
 #include "dusk/interp/lerp.h"
+#include "dusk/interp/matrix.h"
+#include "dusk/interp/skeleton.h"
 
 #include "JSystem/J3DGraphAnimator/J3DModel.h"
 #include "mtx.h"
@@ -25,7 +27,7 @@ void clear_actor_pose();
 namespace {
 
 struct Recording {
-    absl::flat_hash_map<uintptr_t, Mtx> matrix_values;
+    absl::flat_hash_map<uintptr_t, dusk::interp::matrix::MatrixSample> matrix_values;
 };
 
 bool s_recording = false;
@@ -79,7 +81,8 @@ void interpolate_replacements() {
         if (auto it = s_currentRecording.matrix_values.find(old.first);
             it != s_currentRecording.matrix_values.end())
         {
-            lerp(g_replacements[old.first], old.second, it->second, s_step);
+            dusk::interp::matrix::interpolate(
+                g_replacements[old.first], old.second, it->second, s_step);
         }
     }
 }
@@ -134,6 +137,7 @@ void clear_interpolation_history() {
     dusk::interp::clear_owned_buffers();
     clear_callbacks();
     dusk::interp::clear_camera();
+    dusk::interp::skeleton::clear();
     s_presentationDepth = 0;
 }
 
@@ -150,6 +154,7 @@ void begin_sim_tick() {
     camera_on_sim_tick();
     actor_pose_on_sim_tick();
     ++s_simTickSeq;
+    skeleton::begin_sim_tick();
 }
 
 uint64_t sim_tick_seq() {
@@ -190,6 +195,9 @@ void begin_record() {
 
 void end_record() {
     s_recording = false;
+    for (auto& entry : s_currentRecording.matrix_values) {
+        dusk::interp::matrix::finalize(&entry.second);
+    }
 }
 
 void request_presentation_sync() {
@@ -224,12 +232,21 @@ void record_final_mtx(Mtx m, const void* key) {
         return;
     }
 
-    auto& it = s_currentRecording.matrix_values[reinterpret_cast<uintptr_t>(key)];
-    MTXCopy(m, it);
+    auto& sample = s_currentRecording.matrix_values[reinterpret_cast<uintptr_t>(key)];
+    dusk::interp::matrix::record(&sample, m);
 }
 
 void record_final_mtx(Mtx m) {
     record_final_mtx(m, m);
+}
+
+bool override_presentation_mtx(const void* key, const Mtx value) {
+    if (!s_replacementsActive || presentation_sync_active() || key == nullptr || value == nullptr) {
+        return false;
+    }
+
+    MTXCopy(value, g_replacements[reinterpret_cast<uintptr_t>(key)]);
+    return true;
 }
 
 bool lookup_replacement(const void* key, Mtx out) {

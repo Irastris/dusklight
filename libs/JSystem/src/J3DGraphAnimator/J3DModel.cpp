@@ -11,6 +11,7 @@
 
 #if TARGET_PC
 #include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/skeleton.h"
 #endif
 
 #define J3D_ASSERTMSG(LINE, COND, MSG) JUT_ASSERT_MSG(LINE, (COND) != 0, MSG)
@@ -496,6 +497,8 @@ void J3DModel::calc() {
     for (u16 i = 0; i < mModelData->getWEvlpMtxNum(); ++i) {
         dusk::interp::record_final_mtx(getWeightAnmMtx(i));
     }
+
+    dusk::interp::skeleton::capture_model(this);
 #endif
 }
 

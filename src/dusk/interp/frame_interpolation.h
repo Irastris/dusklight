@@ -28,6 +28,7 @@ bool get_ui_tick_pending();
 
 void record_final_mtx(Mtx m, const void* key);
 void record_final_mtx(Mtx m);
+bool override_presentation_mtx(const void* key, const Mtx value);
 
 bool lookup_replacement(const void* key, Mtx out);
 bool lookup_concat_replacement(const void* lhs, const void* rhs, Mtx out);
