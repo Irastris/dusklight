@@ -2086,9 +2086,7 @@ void dScnKy_env_light_c::setLight_palno_get(u8* prev_envr_id_p, u8* next_envr_id
     u8 psel_idx = 0;
     int i;
     int sp14 = 0;
-#if TARGET_PC
-    const f32 timeScale = (pattern_ratio_p == &g_env_light.pat_ratio) ? ::timeScale : 1.0f;
-#endif
+    IF_DUSK(const f32 timeScale = pattern_ratio_p == &g_env_light.pat_ratio ? ::timeScale : 1.0f);
 
     if (*init_timer_p != 0) {
         (*init_timer_p)++;
@@ -2630,10 +2628,7 @@ void dScnKy_env_light_c::setLight() {
         u8 next_pal_start_id;
         u8 prev_pal_end_id;
         u8 next_pal_end_id;
-#if TARGET_PC
-        const f32 deltaTime = dusk::game_clock::consume_interval(this);
-        timeScale = deltaTime / dusk::game_clock::kSimPeriod;
-#endif
+        IF_DUSK(timeScale = dusk::game_clock::original_frames());
         setLight_palno_get(&g_env_light.PrevCol, &g_env_light.UseCol, &g_env_light.wether_pat0,
                            &g_env_light.wether_pat1, &prev_pal_start_id, &prev_pal_end_id,
                            &next_pal_start_id, &next_pal_end_id, &color_ratio, &start_pat_pal_id,

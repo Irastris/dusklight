@@ -829,7 +829,8 @@ void fapGm_Execute() {
 #endif
 
     cCt_Counter(0);
-#ifdef TARGET_PC
+#if TARGET_PC
+    dComIfGp_particle_calcMenu();
     const dusk::gamemode::GameMode* gameMode =
         dusk::gamemode::getGameModeManager().getCurrentGameMode();
     if (gameMode) {

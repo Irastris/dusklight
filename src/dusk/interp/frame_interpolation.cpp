@@ -135,6 +135,7 @@ void clear_interpolation_history() {
     clear_replacements();
     dusk::interp::clear_actor_pose();
     dusk::interp::clear_owned_buffers();
+    dusk::interp::clear_weather_buffers();
     clear_callbacks();
     dusk::interp::clear_camera();
     dusk::interp::skeleton::clear();

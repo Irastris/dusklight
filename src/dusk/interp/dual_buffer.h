@@ -2,6 +2,7 @@
 
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/interp/lerp.h"
+#include "SSystem/SComponent/c_xyz.h"
 
 #include <cstring>
 #include <dolphin/mtx.h>
@@ -178,6 +179,57 @@ private:
     Buffer m_buffers[strand_count];
 };
 
+template <int N>
+class WeatherBuffer {
+public:
+    WeatherBuffer() : count(0) {}
+
+    void reset() {
+        buf.reset();
+        count = 0;
+    }
+
+    template <typename Sample>
+    void capture(int n, f32 snap_dist, Sample sample) {
+        if (n <= 0 || n > N) {
+            reset();
+            return;
+        }
+
+        for (int i = 0; i < n; i++) {
+            world[i] = sample(i);
+            const bool new_index = i >= count;
+            const bool relocated = !new_index && world[i].abs(sim[i]) > snap_dist;
+            skip[i] = new_index || relocated;
+            sim[i] = world[i];
+        }
+        count = n;
+        buf.writeback_on_sim_tick(world, n, &snap_skipped, this);
+    }
+
+    void try_read(int i, cXyz* out) const {
+        if (is_enabled() && buf.ready() && i >= 0 && i < count) {
+            *out = world[i];
+        }
+    }
+
+private:
+    static void snap_skipped(void* user) {
+        WeatherBuffer* self = static_cast<WeatherBuffer*>(user);
+        for (int i = 0; i < self->count; i++) {
+            if (self->skip[i]) {
+                self->world[i] = self->sim[i];
+            }
+        }
+    }
+
+    DualBuffer<cXyz, N> buf;
+    cXyz world[N];
+    cXyz sim[N];
+    u8 skip[N];
+    int count;
+};
+
 namespace detail {
 void* acquire(const void* key, const void* type, void* (*make)(), void (*destroy)(void*));
 }
@@ -192,6 +244,7 @@ Record& get(const void* key) {
 
 void erase_owned_buffers(const void* key);
 void clear_owned_buffers();
+void clear_weather_buffers();
 
 }  // namespace dusk::interp
 #endif

@@ -2201,12 +2201,7 @@ int mDoGph_Painter() {
     drawHeapMap();
     #endif
 
-#ifdef TARGET_PC
-    if (dusk::interp::get_ui_tick_pending())
-#endif
-    {
-        dComIfGp_particle_calcMenu();
-    }
+    IF_NOT_DUSK(dComIfGp_particle_calcMenu());
 
     JFWDisplay::getManager()->setFader(mDoGph_gInf_c::getFader());
     mDoGph_gInf_c::setClearColor(mDoGph_gInf_c::getBackColor());
