@@ -51,6 +51,7 @@
 #include "dusk/imgui/ImGuiConsole.hpp"
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/game_clock.h"
+#include "dusk/interp/vdt.h"
 #include "dusk/logging.h"
 #include "dusk/settings.h"
 #include "helpers/endian.h"
@@ -2184,6 +2185,8 @@ static void drawItem3D() {
 
 int mDoGph_Painter() {
     ZoneScoped;
+
+    IF_DUSK(dusk::vdt::advance_all());
 
     // Diagnostic: log windowNum to track game state machine progress
     static bool sDiagLoggedWindow = false;

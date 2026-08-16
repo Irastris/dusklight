@@ -13,6 +13,13 @@
 #include "m_Do/m_Do_ext.h"
 #include "m_Do/m_Do_graphic.h"
 
+#if TARGET_PC
+#include "dusk/interp/pane.h"
+#include "dusk/interp/vdt.h"
+
+#include "d_pane_class_vdt.inc"
+#endif
+
 CPaneMgr::CPaneMgr() {
     mpFirstStackAlpha = NULL;
     mpFirstStackSize = NULL;
@@ -25,6 +32,9 @@ CPaneMgr::CPaneMgr(J2DScreen* p_scrn, u64 tag, u8 flags, JKRExpHeap* p_heap) {
 }
 
 CPaneMgr::~CPaneMgr() {
+    IF_DUSK(cancel_scale(this));
+    IF_DUSK(cancel_color(this));
+
     if (mpFirstStackSize) {
         heap->free(mpFirstStackSize);
         mpFirstStackSize = NULL;
@@ -270,6 +280,17 @@ void CPaneMgr::paneScale(f32 x, f32 y) {
 }
 
 bool CPaneMgr::scaleAnime(s16 param_0, f32 param_1, f32 param_2, u8 param_3) {
+#if TARGET_PC
+    if (mScaleAnime < param_0 - 1 &&
+        request_scale(this, param_0, param_1, param_2, param_3)) {
+        return false;
+    }
+
+    cancel_scale(this);
+    mScaleAnime = param_0;
+    getPanePtr()->scale(mInitScale.x * param_2, mInitScale.y * param_2);
+    return true;
+#else
     if (mScaleAnime < param_0 - 1) {
         mScaleAnime++;
         f32 rate = rateCalc(param_0, mScaleAnime, param_3);
@@ -281,10 +302,23 @@ bool CPaneMgr::scaleAnime(s16 param_0, f32 param_1, f32 param_2, u8 param_3) {
         return true;
     }
     return false;
+#endif
 }
 
 bool CPaneMgr::colorAnime(s16 anmTimer, JUtility::TColor startBlack, JUtility::TColor endBlack,
                               JUtility::TColor startWhite, JUtility::TColor endWhite, u8 calcType) {
+#if TARGET_PC
+    if (mColorAnime < anmTimer - 1 &&
+        request_color(this, anmTimer, startBlack, endBlack, startWhite, endWhite,
+            calcType)) {
+        return false;
+    }
+
+    cancel_color(this);
+    mColorAnime = anmTimer;
+    setBlackWhite(endBlack, endWhite);
+    return true;
+#else
     if (mColorAnime < anmTimer - 1) {
         mColorAnime++;
         f32 rate = rateCalc(anmTimer, mColorAnime, calcType);
@@ -349,6 +383,7 @@ bool CPaneMgr::colorAnime(s16 anmTimer, JUtility::TColor startBlack, JUtility::T
     }
 
     return false;
+#endif
 }
 
 Vec CPaneMgr::getGlobalVtx(J2DPane* p_pane, Mtx* param_1, u8 param_2, bool param_3,

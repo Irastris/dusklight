@@ -10,6 +10,12 @@ void dPaneClass_showNullPane(J2DScreen*);
 void dPaneClass_showNullPane(J2DPane*);
 bool dPaneClass_setPriority(void**, JKRHeap*, J2DScreen*, char const*, u32, JKRArchive*);
 
+#if TARGET_PC
+class CPaneMgr;
+void cancel_scale(CPaneMgr* pane);
+void cancel_color(CPaneMgr* pane);
+#endif
+
 class CPaneMgr : public CPaneMgrAlpha {
 public:
     virtual ~CPaneMgr();
@@ -54,8 +60,14 @@ public:
     void resize(f32 x, f32 y) { getPanePtr()->resize(x, y); }
     void move(f32 x, f32 y) { getPanePtr()->move(x, y); }
 
-    void scaleAnimeStart(s16 v) { mScaleAnime = v; }
-    void colorAnimeStart(s16 start) { mColorAnime = start; }
+    void scaleAnimeStart(DUSK_IF_ELSE(f32, s16) v) {
+        mScaleAnime = v;
+        IF_DUSK(cancel_scale(this));
+    }
+    void colorAnimeStart(DUSK_IF_ELSE(f32, s16) start) {
+        mColorAnime = start;
+        IF_DUSK(cancel_color(this));
+    }
 
     f32 getPosX() { return getPanePtr()->getBounds().i.x; }
     f32 getPosY() { return getPanePtr()->getBounds().i.y; }
@@ -106,10 +118,10 @@ public:
     /* 0x5C */ JUtility::TColor mInitBlack;
     /* 0x60 */ s16 field_0x60;
     /* 0x62 */ s16 field_0x62;
-    /* 0x64 */ s16 mScaleAnime;
+    /* 0x64 */ DUSK_IF_ELSE(f32, s16) mScaleAnime;
     /* 0x66 */ s16 field_0x66;
     /* 0x68 */ s16 field_0x68;
-    /* 0x6A */ s16 mColorAnime;
+    /* 0x6A */ DUSK_IF_ELSE(f32, s16) mColorAnime;
 };
 
 #endif /* D_PANE_D_PANE_CLASS_H */

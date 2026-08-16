@@ -5,6 +5,10 @@
 #include "JSystem/JKernel/JKRExpHeap.h"
 #include "m_Do/m_Do_ext.h"
 
+#if TARGET_PC
+#include "dusk/interp/pane.h"
+#endif
+
 CPaneMgrAlpha::CPaneMgrAlpha() {}
 
 CPaneMgrAlpha::CPaneMgrAlpha(J2DScreen* p_screen, u64 tag, u8 flags, JKRExpHeap* p_heap) {
@@ -14,6 +18,8 @@ CPaneMgrAlpha::CPaneMgrAlpha(J2DScreen* p_screen, u64 tag, u8 flags, JKRExpHeap*
 }
 
 CPaneMgrAlpha::~CPaneMgrAlpha() {
+    IF_DUSK(dusk::interp::pane::cancel_alpha(this));
+
     if (mpFirstStackAlpha != NULL) {
         heap->free(mpFirstStackAlpha);
         mpFirstStackAlpha = NULL;
@@ -68,7 +74,7 @@ bool CPaneMgrAlpha::isVisible() {
     return mPane->isVisible();
 }
 
-f32 CPaneMgrAlpha::rateCalc(s16 maxTimer, s16 curTimer, u8 calcType) {
+f32 CPaneMgrAlpha::rateCalc(DUSK_IF_ELSE(f32, s16) maxTimer, DUSK_IF_ELSE(f32, s16) curTimer, u8 calcType) {
     if (maxTimer <= curTimer) {
         return 1.0f;
     }
@@ -106,6 +112,17 @@ f32 CPaneMgrAlpha::getAlphaRate() {
 }
 
 bool CPaneMgrAlpha::alphaAnime(s16 timer, u8 startAlpha, u8 endAlpha, u8 calcType) {
+#if TARGET_PC
+    if (mAlphaTimer < timer - 1 &&
+        dusk::interp::pane::request_alpha(this, timer, startAlpha, endAlpha, calcType)) {
+        return false;
+    }
+
+    dusk::interp::pane::cancel_alpha(this);
+    mAlphaTimer = timer;
+    setAlpha(endAlpha);
+    return true;
+#else
     if (mAlphaTimer < timer - 1) {
         mAlphaTimer++;
         f32 rate = rateCalc(timer, mAlphaTimer, calcType);
@@ -117,6 +134,7 @@ bool CPaneMgrAlpha::alphaAnime(s16 timer, u8 startAlpha, u8 endAlpha, u8 calcTyp
     }
 
     return false;
+#endif
 }
 
 bool CPaneMgrAlpha::alphaAnimeLoop(s16 param_0, u8 param_1, u8 param_2, u8 param_3) {
@@ -185,6 +203,13 @@ void CPaneMgrAlpha::childPaneSetAlpha(J2DPane* p_pane, u8 alpha) {
         childPaneSetAlpha(p_pane->getNextChildPane(), alpha);
     }
 }
+
+#if TARGET_PC
+void CPaneMgrAlpha::alphaAnimeStart(f32 start) {
+    mAlphaTimer = start;
+    dusk::interp::pane::cancel_alpha(this);
+}
+#endif
 
 CPaneMgrAlphaMorf::CPaneMgrAlphaMorf(J2DScreen* p_screen, u64 tag, u8 flags,
                                          JKRExpHeap* p_heap)
