@@ -19,7 +19,8 @@
 #include <cstring>
 
 #if TARGET_PC
-#include "dusk/interp/frame_interpolation.h"
+#include "dusk/game_clock.h"
+#include "dusk/interp/vdt.h"
 #include "dusk/version.hpp"
 #include "helpers/string.hpp"
 #endif
@@ -228,6 +229,7 @@ int dMeterButton_c::_execute(u32 i_flags, bool i_drawA, bool i_drawB, bool i_dra
         }
     }
 
+#if !TARGET_PC
     for (int i = 0; i < 2; i++) {
         if (field_0x2f4[i] != 0.0f) {
             field_0x2fc[i] = field_0x2f4[i];
@@ -241,12 +243,25 @@ int dMeterButton_c::_execute(u32 i_flags, bool i_drawA, bool i_drawB, bool i_dra
 
         trans_button(i, field_0x2fc[i]);
     }
+#endif
     return 1;
 }
 
 void dMeterButton_c::draw() {
     J2DGrafContext* graf_ctx = dComIfGp_getCurrentGrafPort();
     graf_ctx->setup2D();
+
+#if TARGET_PC
+    for (int i = 0; i < 2; i++) {
+        if (field_0x2f4[i] != 0.0f) {
+            field_0x2fc[i] = field_0x2f4[i];
+        } else {
+            dusk::vdt::present_chase(&field_0x2fc[i], field_0x2f4[i], 1.0f, 10.0f, 0.1f);
+        }
+
+        trans_button(i, field_0x2fc[i]);
+    }
+#endif
 
     mpButtonScreen->draw(0.0f, 0.0f, graf_ctx);
     if (field_0x00c != NULL) {
@@ -294,7 +309,18 @@ void dMeterButton_c::draw() {
 
             s16 temp_r6 = g_drawHIO.mEmpButton.mRepeatHitFrameNum;
             s16 temp_r6_2 = g_drawHIO.mEmpButton.mRepeatHitFrameNum / 2;
-            IF_DUSK_BLOCK(dusk::interp::get_ui_tick_pending())
+#if TARGET_PC
+            const f32 period = temp_r6;
+            const f32 previous = field_0x4b8[i];
+            dusk::vdt::advance_looping_frame(field_0x4b8[i], 1.0f, period);
+            if (dusk::vdt::crossed_threshold(previous, previous + dusk::game_clock::original_frames(), period)) {
+                if (field_0x4bc[i] == 0) {
+                    field_0x4bc[i] = 1;
+                } else {
+                    field_0x4bc[i] = 0;
+                }
+            }
+#else
             field_0x4b8[i]++;
 
             if (field_0x4b8[i] >= temp_r6) {
@@ -306,7 +332,7 @@ void dMeterButton_c::draw() {
                     field_0x4bc[i] = 0;
                 }
             }
-            IF_DUSK_BLOCK_END
+#endif
 
             f32 var_f2;
             if (temp_r6_2 < field_0x4b8[i]) {
@@ -378,18 +404,8 @@ void dMeterButton_c::draw() {
             }
 
             if (var_r3) {
-#if TARGET_PC
-                if (dusk::interp::get_ui_tick_pending()) {
-                    mWasListen[i] = var_r22;
-                    mWasRepeat[i] = var_r23;
-                } else {
-                    var_r22 = mWasListen[i];
-                    var_r23 = mWasRepeat[i];
-                }
-#endif
                 if (var_r22) {
-                    if (field_0x2e8[i] == 18.0f IF_DUSK(&& dusk::interp::get_ui_tick_pending()))
-                    {
+                    if (field_0x2e8[i] == 18.0f) {
                         mDoAud_seStart(Z2SE_SY_HINT_BUTTON_BLINK, NULL, 0, 0);
                     }
 
@@ -2075,7 +2091,7 @@ void dMeterButton_c::setAlphaButtonAAnimeMax() {
             dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonA, 5);
         }
 
-        if (mpButtonA->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_A_e]) {
+        if (DUSK_IF_ELSE(true, mpButtonA->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_A_e]) {
             mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
             mPlayedButtonSound[BUTTON_A_e] = true;
         }
@@ -2111,7 +2127,7 @@ void dMeterButton_c::setAlphaButtonBAnimeMax() {
             dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonB, 5);
         }
 
-        if (mpButtonB->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_B_e]) {
+        if (DUSK_IF_ELSE(true, mpButtonB->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_B_e]) {
             mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
             mPlayedButtonSound[BUTTON_B_e] = true;
         }
@@ -2147,7 +2163,7 @@ void dMeterButton_c::setAlphaButtonRAnimeMax() {
             dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonR, 5);
         }
 
-        if (mpButtonR->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_R_e]) {
+        if (DUSK_IF_ELSE(true, mpButtonR->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_R_e]) {
             mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
             mPlayedButtonSound[BUTTON_R_e] = true;
         }
@@ -2183,7 +2199,7 @@ void dMeterButton_c::setAlphaButtonZAnimeMax() {
             dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonZ, 5);
         }
 
-        if (mpButtonZ->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_Z_e]) {
+        if (DUSK_IF_ELSE(true, mpButtonZ->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_Z_e]) {
             mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
             mPlayedButtonSound[BUTTON_Z_e] = true;
         }
@@ -2220,7 +2236,7 @@ void dMeterButton_c::setAlphaButton3DAnimeMax() {
             dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButton3D, 5);
         }
 
-        if (mpButton3D->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_3D_e]) {
+        if (DUSK_IF_ELSE(true, mpButton3D->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_3D_e]) {
             mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
             mPlayedButtonSound[BUTTON_3D_e] = true;
         }
@@ -2264,7 +2280,7 @@ void dMeterButton_c::setAlphaButtonCAnimeMax() {
             dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonC, 5);
         }
 
-        if (mpButtonC->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_C_e]) {
+        if (DUSK_IF_ELSE(true, mpButtonC->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_C_e]) {
             mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
             mPlayedButtonSound[BUTTON_C_e] = true;
         }
@@ -2329,7 +2345,7 @@ void dMeterButton_c::setAlphaButtonSAnimeMax() {
             dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonS, 5);
         }
 
-        if (mpButtonS->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_S_e]) {
+        if (DUSK_IF_ELSE(true, mpButtonS->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_S_e]) {
             mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
             mPlayedButtonSound[BUTTON_S_e] = true;
         }
@@ -2365,7 +2381,7 @@ void dMeterButton_c::setAlphaButtonXAnimeMax() {
             dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonX, 5);
         }
 
-        if (mpButtonX->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_X_e]) {
+        if (DUSK_IF_ELSE(true, mpButtonX->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_X_e]) {
             mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
             mPlayedButtonSound[BUTTON_X_e] = true;
         }
@@ -2401,7 +2417,7 @@ void dMeterButton_c::setAlphaButtonYAnimeMax() {
             dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonY, 5);
         }
 
-        if (mpButtonY->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_Y_e]) {
+        if (DUSK_IF_ELSE(true, mpButtonY->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_Y_e]) {
             mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
             mPlayedButtonSound[BUTTON_Y_e] = true;
         }
@@ -2440,7 +2456,7 @@ void dMeterButton_c::setAlphaButtonNunAnimeMax() {
                 dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonNun, 5);
             }
 
-            if (mpButtonNun->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_NUN_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonNun->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_NUN_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_NUN_e] = true;
             }
@@ -2480,7 +2496,7 @@ void dMeterButton_c::setAlphaButtonRemoAnimeMax() {
                 dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonRemo, 5);
             }
 
-            if (mpButtonRemo->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_REMO_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonRemo->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_REMO_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_REMO_e] = true;
             }
@@ -2520,7 +2536,7 @@ void dMeterButton_c::setAlphaButtonRemo2AnimeMax() {
                 dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonRemo2, 5);
             }
 
-            if (mpButtonRemo2->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_REMO2_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonRemo2->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_REMO2_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_REMO2_e] = true;
             }
@@ -2562,7 +2578,7 @@ void dMeterButton_c::setAlphaButtonARAnimeMax() {
                 dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonAR, 5);
             }
 
-            if (mpButtonAR->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_AR_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonAR->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_AR_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_AR_e] = true;
             }
@@ -2604,7 +2620,7 @@ void dMeterButton_c::setAlphaButton3DBAnimeMax() {
                 dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButton3DB, 5);
             }
 
-            if (mpButton3DB->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_3DB_e]) {
+            if (DUSK_IF_ELSE(true, mpButton3DB->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_3DB_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_3DB_e] = true;
             }
@@ -2646,7 +2662,7 @@ void dMeterButton_c::setAlphaButtonNUREAnimeMax() {
                 dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonNURE, 5);
             }
 
-            if (mpButtonNURE->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_NURE_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonNURE->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_NURE_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_NURE_e] = true;
             }
@@ -2688,7 +2704,7 @@ void dMeterButton_c::setAlphaButtonReelAnimeMax() {
                 dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonReel, 5);
             }
 
-            if (mpButtonReel->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_REEL_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonReel->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_REEL_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_REEL_e] = true;
             }
@@ -2720,7 +2736,7 @@ void dMeterButton_c::setAlphaButtonReel2AnimeMax() {
             mpButtonReel2->setAlphaRate(1.0f);
             mpButtonReel2->alphaAnimeStart(5);
 
-            if (mpButtonReel2->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_REEL2_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonReel2->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_REEL2_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_REEL2_e] = true;
             }
@@ -2752,7 +2768,7 @@ void dMeterButton_c::setAlphaButtonABAnimeMax() {
             mpButtonAB->setAlphaRate(1.0f);
             mpButtonAB->alphaAnimeStart(5);
 
-            if (mpButtonAB->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_AB_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonAB->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_AB_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_AB_e] = true;
             }
@@ -2784,7 +2800,7 @@ void dMeterButton_c::setAlphaButtonTateAnimeMax() {
             mpButtonTate->setAlphaRate(1.0f);
             mpButtonTate->alphaAnimeStart(5);
 
-            if (mpButtonTate->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_TATE_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonTate->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_TATE_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_TATE_e] = true;
             }
@@ -2826,7 +2842,7 @@ void dMeterButton_c::setAlphaButtonNunZAnimeMax() {
                 dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonNunZ, 5);
             }
 
-            if (mpButtonNunZ->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_NUNZ_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonNunZ->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_NUNZ_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_NUNZ_e] = true;
             }
@@ -2868,7 +2884,7 @@ void dMeterButton_c::setAlphaButtonNunCAnimeMax() {
                 dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonNunC, 5);
             }
 
-            if (mpButtonNunC->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_NUNC_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonNunC->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_NUNC_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_NUNC_e] = true;
             }
@@ -2910,7 +2926,7 @@ void dMeterButton_c::setAlphaButtonBinAnimeMax() {
                 dMeter2Info_getMeterClass()->getMeterDrawPtr()->setAlphaAnimeMax(mpButtonBin, 5);
             }
 
-            if (mpButtonBin->getAlphaRate() == 1.0f && !mPlayedButtonSound[BUTTON_BIN_e]) {
+            if (DUSK_IF_ELSE(true, mpButtonBin->getAlphaRate() == 1.0f) && !mPlayedButtonSound[BUTTON_BIN_e]) {
                 mDoAud_seStart(Z2SE_SY_HINT_BUTTON, NULL, 0, 0);
                 mPlayedButtonSound[BUTTON_BIN_e] = true;
             }

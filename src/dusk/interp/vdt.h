@@ -4,6 +4,10 @@
 
 #include "dolphin/types.h"
 
+#include <cmath>
+
+class J2DAnmBase;
+
 namespace dusk::vdt {
 
 constexpr int kCapacity = 32;
@@ -134,5 +138,42 @@ private:
 
 void register_advance(void (*advance)());
 void advance_all();
+
+inline void advance_looping_frame(float& frame, float speed, float max) {
+    if (max <= 0.0f) {
+        return;
+    }
+    frame += speed * game_clock::original_frames();
+    if (frame >= max) {
+        frame = fmodf(frame, max);
+    }
+}
+
+inline void advance_toward_frame(float& frame, float target, float speed) {
+    if (frame == target) {
+        return;
+    }
+    float step = speed * game_clock::original_frames();
+    if (frame < target) {
+        frame += step;
+        if (frame > target) {
+            frame = target;
+        }
+    } else {
+        frame -= step;
+        if (frame < target) {
+            frame = target;
+        }
+    }
+}
+
+inline bool crossed_threshold(float previous, float current, float threshold) {
+    return previous <= threshold && current >= threshold;
+}
+
+void present_looping(float& frame, J2DAnmBase* anm, float speed);
+void present_addCalc(float* value, float target, float scale, float maxStep, float minStep);
+void present_addCalc2(float* value, float target, float scale, float maxStep, float snap);
+bool present_chase(float* value, float target, float scale, float maxStep, float snap);
 
 }  // namespace dusk::vdt
