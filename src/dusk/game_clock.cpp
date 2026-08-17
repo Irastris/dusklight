@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <unordered_map>
 
 namespace dusk::game_clock {
 
@@ -20,7 +19,6 @@ native_clock::time_point s_previousNativeSample{};
 game_clock::time_point s_latestGameSample{};
 game_clock::time_point s_currentSnapshotTime{};
 game_clock::time_point s_pendingSimTime{};
-std::unordered_map<uintptr_t, game_clock::time_point> s_intervalLastSample;
 uint64_t s_presentationEpoch = 1;
 bool s_timingModeInitialized = false;
 bool s_previousSeparatePresentation = false;
@@ -174,20 +172,6 @@ float ui_dt() {
 
 float original_frames() {
     return ui_dt() / kSimPeriod;
-}
-
-float consume_interval(const void* consumer) {
-    const auto key = reinterpret_cast<uintptr_t>(consumer);
-    const auto now = s_simTickActive ? s_pendingSimTime : game_clock::now();
-    const float timeScale = aurora::time::scale();
-    float dt = kUiInitialDt * timeScale;
-    if (const auto it = s_intervalLastSample.find(key); it != s_intervalLastSample.end()) {
-        dt = std::chrono::duration<float>(now - it->second).count();
-        const float maximumDt = std::max(kUiMaximumDt * timeScale, kSimPeriod);
-        dt = std::min(dt, maximumDt);
-    }
-    s_intervalLastSample[key] = now;
-    return dt;
 }
 
 }  // namespace dusk::game_clock

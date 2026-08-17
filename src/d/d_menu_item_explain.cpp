@@ -26,6 +26,8 @@
 #include "d/d_msg_scrn_arrow.h"
 
 #if TARGET_PC
+#include "dusk/game_clock.h"
+#include "dusk/interp/vdt.h"
 #include "dusk/version.hpp"
 #endif
 
@@ -443,7 +445,7 @@ void dMenu_ItemExplain_c::open_init() {
 }
 
 void dMenu_ItemExplain_c::open_proc() {
-    mAlphaRatio += 2.0f;
+    mAlphaRatio += 2.0f IF_DUSK(* dusk::game_clock::original_frames());
     if (mAlphaRatio >= 201.0f) {
         mAlphaRatio = 201.0f;
         mStatus = 2;

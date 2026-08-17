@@ -118,6 +118,9 @@ public:
     void _delete();
     void _move();
     void _draw();
+#if TARGET_PC
+    void presentAnims();
+#endif
     u8 getNextStatus(u8*);
     bool isSync();
     void all_map_init();
@@ -311,8 +314,8 @@ public:
     /* 0x208 */ int mRoomCursor;
     /* 0x20C */ int mStayStageNo;
     /* 0x210 */ s16 field_0x210;
-    /* 0x212 */ s16 mDisplayFrame;
-    /* 0x214 */ s16 mZoomLevel;
+    /* 0x212 */ DUSK_IF_ELSE(f32, s16) mDisplayFrame;
+    /* 0x214 */ DUSK_IF_ELSE(f32, s16) mZoomLevel;
     /* 0x216 */ u16 mAllTitleName;
     /* 0x218 */ u16 mTitleName[8];
     /* 0x228 */ u16 mAreaName[20];
@@ -339,6 +342,13 @@ public:
     /* 0x311 */ u8 mRegionNo;
     /* 0x312 */ bool mResetAreaName;
     /* 0x313 */ bool mAreaNameSet;
+#if TARGET_PC
+    enum FmapZoomApply { FMAP_ZOOM_NONE, FMAP_ZOOM_REGION, FMAP_ZOOM_SPOT };
+    bool advanceZoom(f32 end, FmapZoomApply apply);
+    void presentZoomView();
+    bool mPresenting;
+    s8 mOpenCloseDir;
+#endif
 };
 
 class dMf_HIO_c : public JORReflexible {

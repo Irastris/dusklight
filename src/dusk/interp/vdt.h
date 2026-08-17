@@ -7,6 +7,8 @@
 #include <cmath>
 
 class J2DAnmBase;
+class J2DAnmTransform;
+class J2DPane;
 
 namespace dusk::vdt {
 
@@ -172,8 +174,10 @@ inline bool crossed_threshold(float previous, float current, float threshold) {
 }
 
 void present_looping(float& frame, J2DAnmBase* anm, float speed);
+void present_toward(float& frame, float target, J2DAnmTransform* anm, J2DPane* pane = nullptr);
 void present_addCalc(float* value, float target, float scale, float maxStep, float minStep);
 void present_addCalc2(float* value, float target, float scale, float maxStep, float snap);
+float present_sine_ease(float i_max, float i_value);
 bool present_chase(float* value, float target, float scale, float maxStep, float snap);
 
 }  // namespace dusk::vdt

@@ -91,10 +91,6 @@ public:
     void calcCursor();
     void drawCursor();
 
-    #if TARGET_PC
-    void dMapBgWide();
-    #endif
-
     void setDPDFloorSelCurPos(s8 i_pos) { field_0xdd6 = i_pos; }
 
     f32 getMapWidth() { return mMapWidth; }
@@ -108,6 +104,9 @@ public:
     }
 
 #if TARGET_PC
+    void dMapBgWide();
+
+    bool isIconScaleAnmEnd() const { return field_0xdd2 >= field_0xdd1; }
     void resetScrollArrowMask() { field_0xdda = 0; }
 #endif
 
@@ -174,16 +173,15 @@ public:
     /* 0xDCC */ f32 field_0xdcc;
     /* 0xDD0 */ u8 field_0xdd0;
     /* 0xDD1 */ u8 field_0xdd1;
-    /* 0xDD2 */ u8 field_0xdd2;
+    /* 0xDD2 */ DUSK_IF_ELSE(f32, u8) field_0xdd2;
     /* 0xDD3 */ u8 field_0xdd3;
     /* 0xDD4 */ s8 field_0xdd4;
     /* 0xDD5 */ u8 field_0xdd5;
     /* 0xDD6 */ s8 field_0xdd6;
-    /* 0xDD7 */ u8 field_0xdd7;
+    /* 0xDD7 */ DUSK_IF_ELSE(f32, u8) field_0xdd7;
     /* 0xDD8 */ u8 field_0xdd8;
     /* 0xDD9 */ u8 field_0xdd9;
     /* 0xDDA */ u8 field_0xdda;
-
 #if TARGET_PC
     J2DTextBox* mpPoeCountPane;
     J2DPicture* mpPoeCountIcon;
@@ -210,6 +208,11 @@ public:
     void mapControl();
     bool isOpen();
     bool isClose();
+#if TARGET_PC
+    void presentAnims();
+    void presentLayoutAnims();
+    void presentMapView();
+#endif
     void _draw();
     void itemInfo_init_proc();
     void itemInfo_proc();
@@ -289,7 +292,7 @@ public:
     /* 0x144 */ f32 field_0x144;
     /* 0x148 */ f32 field_0x148;
     /* 0x14C */ Vec field_0x14c[2];
-    /* 0x164 */ s16 field_0x164;
+    /* 0x164 */ DUSK_IF_ELSE(f32, s16) field_0x164;
     /* 0x166 */ u16 mCMessageNum;
     /* 0x168 */ u16 mJMessageNum;
     /* 0x16A */ u16 field_0x16a;
@@ -317,6 +320,10 @@ public:
     /* 0x183 */ u8 field_0x183;
     /* 0x184 */ bool field_0x184;
     /* 0x185 */ bool field_0x185;
+#if TARGET_PC
+    bool mPresenting;
+    s8 mOpenCloseDir;
+#endif
 };
 
 #endif /* D_MENU_D_MENU_DMAP_H */

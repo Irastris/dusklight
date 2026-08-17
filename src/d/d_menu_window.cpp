@@ -28,6 +28,7 @@
 
 #if TARGET_PC
 #include "dusk/interp/frame_interpolation.h"
+#include "dusk/game_clock.h"
 #endif
 
 class dDlst_MENU_CAPTURE_c : public dDlst_base_c {
@@ -1589,6 +1590,9 @@ int dMw_c::_create() {
     field_0x144 = 3;
 
     dMeter2Info_setWindowStatus(0);
+
+    IF_DUSK(base.draw_interp_frame = true);
+
     return cPhs_COMPLEATE_e;
 }
 
@@ -1632,6 +1636,15 @@ int dMw_c::_execute() {
 }
 
 int dMw_c::_draw() {
+#if TARGET_PC
+    if (!dusk::game_clock::is_sim_frame()) {
+        u8 window_status = dMeter2Info_getWindowStatus();
+        if (window_status != 10 && window_status != 5 && window_status != 4 && window_status != 2) {
+            return 1;
+        }
+    }
+#endif
+
     if (mpCapture != NULL && mpCapture->checkDraw() && mpCapture->getAlpha() != 0) {
         if (mpCapture->getTopFlag() != 0) {
             dComIfGd_set2DOpaTop(mpCapture);
@@ -1678,6 +1691,11 @@ int dMw_c::_draw() {
                 dComIfGd_set2DOpa(mpMenuInsect);
             }
         } else if (dMeter2Info_getWindowStatus() == 2 && mpMenuRing != NULL) {
+#if TARGET_PC
+            if (dusk::game_clock::is_presentation_frame()) {
+                mpMenuRing->presentAnims();
+            }
+#endif
             mpMenuRing->drawFlag0();
             dComIfGd_set2DOpa(mpMenuRing);
             dComIfGd_set2DOpa(mpMenuRing);

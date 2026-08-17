@@ -25,6 +25,8 @@
 
 #if TARGET_PC
 #include "dusk/interp/frame_interpolation.h"
+#include "dusk/game_clock.h"
+#include "dusk/interp/vdt.h"
 #include "dusk/memory.h"
 #include "dusk/version.hpp"
 #include "helpers/string.hpp"
@@ -99,6 +101,10 @@ static dMenu_Fmap_c::process move_process[30] = {
 };
 
 DUSK_GAME_DATA dMf_HIO_c* dMf_HIO_c::mMySelfPointer;
+
+#if TARGET_PC
+#include "d_menu_fmap_vdt.inc"
+#endif
 
 dMf_HIO_c::dMf_HIO_c() {
     mMySelfPointer = this;
@@ -256,6 +262,10 @@ dMenu_Fmap_c::dMenu_Fmap_c(JKRExpHeap* i_heap, STControl* i_stick, CSTControl* i
     field_0x210 = 0;
     mDisplayFrame = 0;
     mZoomLevel = 0;
+#if TARGET_PC
+    mPresenting = false;
+    mOpenCloseDir = 0;
+#endif
 
     for (int i = 0; i < 8; i++) {
         mRegionOffsetX[i] = 0.0f;
@@ -500,22 +510,24 @@ void dMenu_Fmap_c::_move() {
     mpDraw2DBack->clearIconInfo();
 
     (this->*move_process[mProcess])();
-    
-    mpDraw2DTop->_execute();
+
+    IF_NOT_DUSK(mpDraw2DTop->_execute());
     mpDraw2DBack->setBaseBackAlpha(g_fmHIO.mBaseBackAlpha);
-    mpDraw2DBack->btkAnimeLoop(g_fmHIO.mBackAnimeStep);
+    IF_NOT_DUSK(mpDraw2DBack->btkAnimeLoop(g_fmHIO.mBackAnimeStep));
     mpDraw2DTop->setMoyaAlpha(g_fmHIO.mMoyaAlpha);
-    mpDraw2DTop->btkAnimeLoop(g_fmHIO.mTopAnimeStep);
+    IF_NOT_DUSK(mpDraw2DTop->btkAnimeLoop(g_fmHIO.mTopAnimeStep));
 
     if (mProcess != process) {
         (this->*init_process[mProcess])();
     }
 
+#if !TARGET_PC
     if (mProcess == PROC_PORTAL_WARP_FORBID) {
         mpDraw2DBack->calcBackAlpha(true);
     } else {
         mpDraw2DBack->calcBackAlpha(false);
     }
+#endif
 
     mpDraw2DBack->setAllTrans(mTransX, mTransY);
     mpDraw2DTop->setAllTrans(mTransX, mTransY);
@@ -524,6 +536,7 @@ void dMenu_Fmap_c::_move() {
         drawDebugStage();
     }
 
+#if !TARGET_PC
     if (mSpotTextureFadeAlpha != 1.0f) {
         cLib_addCalc2(&mSpotTextureFadeAlpha, 1.0f, 0.4f, 0.5f);
         if (fabsf(mSpotTextureFadeAlpha - 1.0f) < 0.1f) {
@@ -531,6 +544,7 @@ void dMenu_Fmap_c::_move() {
         }
         mpDraw2DBack->setSpotTextureFadeAlpha(mSpotTextureFadeAlpha);
     }
+#endif
 
 #if TARGET_PC
     u8 region = mpDraw2DBack->getSelectRegion();
@@ -545,13 +559,28 @@ void dMenu_Fmap_c::_move() {
 
 void dMenu_Fmap_c::_draw() {
     if (mpDraw2DBack != NULL && mpDraw2DTop != NULL) {
+#if TARGET_PC
+        if (dusk::game_clock::is_presentation_frame()) {
+            presentAnims();
+            if (field_0x305) {
+                mpMenuFmapMap->presentRendering(mpWorldData, mStartStageNo,
+                                                mpDraw2DBack->getRenderingPosX(),
+                                                mpDraw2DBack->getRenderingPosZ(),
+                                                mpDraw2DBack->getRenderingScale(),
+                                                mpDraw2DBack->getMapZoomRate());
+            }
+            mpDraw2DBack->clearIconInfo();
+        }
+#endif
         if (field_0x305) {
+            IF_DUSK_BLOCK(dusk::game_clock::is_sim_frame())
             mpMenuFmapMap->setRendering(mpWorldData, mStartStageNo,
                                         mpDraw2DBack->getRenderingPosX(),
                                         mpDraw2DBack->getRenderingPosZ(),
                                         mpDraw2DBack->getRenderingScale(),
                                         mpDraw2DBack->getMapZoomRate());
             mpDraw2DBack->setStageInfo(mSpotNum, mpMenuFmapMap);
+            IF_DUSK_BLOCK_END
             drawIcon(field_0x1ec, false);
             if (mProcess == PROC_ZOOM_REGION_TO_SPOT || mProcess == PROC_ZOOM_SPOT_TO_REGION
                 || mProcess == PROC_YAMIBOSS_DEMO4 || mProcess == PROC_LIGHT_DEMO1
@@ -773,6 +802,17 @@ void dMenu_Fmap_c::all_map_proc() {
             Z2GetAudioMgr()->seStart(Z2SE_SYS_ERROR, NULL, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
         }
     } else {
+#if TARGET_PC
+        if (region_change || mResetAreaName) {
+            mResetAreaName = false;
+            if (region != 0xff && mpDraw2DBack->isShowRegion(region)) {
+                setAreaName(mTitleName[region]);
+                mpDraw2DBack->setSpotCursor(0);
+            } else {
+                setAreaNameZero();
+            }
+        }
+#else
         u8 region1 = mpDraw2DBack->getSelectRegion();
         mpDraw2DBack->allmap_move2(mpStick);
         u8 region2 = mpDraw2DBack->getSelectRegion();
@@ -787,6 +827,7 @@ void dMenu_Fmap_c::all_map_proc() {
                 setAreaNameZero();
             }
         }
+#endif
         if (mErrorSound == true) {
             mErrorSound = false;
         }
@@ -807,8 +848,12 @@ void dMenu_Fmap_c::zoom_all_to_region_init() {
 }
 
 void dMenu_Fmap_c::zoom_all_to_region_proc() {
+#if TARGET_PC
+    bool zoom_done = advanceZoom(10.0f, FMAP_ZOOM_REGION);
+#else
     mZoomLevel++;
     mpDraw2DBack->zoomMapCalc((f32)mZoomLevel / 10.0f);
+#endif
 
     if (mIsWarpMap == true) {
         mpDraw2DTop->setArrowAlphaRatio(dMenu_Fmap2DTop_c::ARROW_UP, 0.0f);
@@ -817,7 +862,7 @@ void dMenu_Fmap_c::zoom_all_to_region_proc() {
         mpDraw2DTop->setArrowAlphaRatio(dMenu_Fmap2DTop_c::ARROW_DOWN, 0.0f);
     }
 
-    if (mZoomLevel >= 10) {
+    if (DUSK_IF_ELSE(zoom_done, mZoomLevel >= 10)) {
         if (mIsWarpMap == true) {
             setProcess(PROC_PORTAL_WARP_MAP);
         } else {
@@ -832,8 +877,12 @@ void dMenu_Fmap_c::zoom_region_to_all_init() {
 }
 
 void dMenu_Fmap_c::zoom_region_to_all_proc() {
+#if TARGET_PC
+    bool zoom_done = advanceZoom(0.0f, FMAP_ZOOM_REGION);
+#else
     mZoomLevel--;
     mpDraw2DBack->zoomMapCalc((f32)mZoomLevel / 10.0f);
+#endif
 
     if (mIsWarpMap == true) {
         mpDraw2DTop->setArrowAlphaRatio(dMenu_Fmap2DTop_c::ARROW_UP, 0.0f);
@@ -842,7 +891,7 @@ void dMenu_Fmap_c::zoom_region_to_all_proc() {
         mpDraw2DTop->setArrowAlphaRatio(dMenu_Fmap2DTop_c::ARROW_DOWN, 0.0f);
     }
 
-    if (mZoomLevel <= 0) {
+    if (DUSK_IF_ELSE(zoom_done, mZoomLevel <= 0)) {
         if (mpDraw2DBack->getAllPathShowFlag()) {
             removeAreaData();
             readWorldData(0xff);
@@ -932,7 +981,7 @@ void dMenu_Fmap_c::region_map_proc() {
         if (g_fmapHIO.mDisplayReferenceArea) {
             mpDraw2DBack->zoomMapCalc(1.0f);
         }
-        mpDraw2DBack->regionMapMove(mpStick);
+        IF_NOT_DUSK(mpDraw2DBack->regionMapMove(mpStick));
         int stage_no, room_no;
 
         f32 pos_x = mpDraw2DBack->getArrowPos2DX() - mDoGph_gInf_c::getMinXF()
@@ -973,8 +1022,13 @@ void dMenu_Fmap_c::to_portal_warp_map_init() {
 }
 
 void dMenu_Fmap_c::to_portal_warp_map_proc() {
+#if TARGET_PC
+    if (advanceZoom(0.0f, FMAP_ZOOM_NONE))
+#else
     mZoomLevel--;
-    if (mZoomLevel <= 0) {
+    if (mZoomLevel <= 0)
+#endif
+    {
         setProcess(PROC_PORTAL_WARP_MAP);
     }
 }
@@ -1131,20 +1185,26 @@ void dMenu_Fmap_c::zoom_region_to_spot_init() {
 }
 
 void dMenu_Fmap_c::zoom_region_to_spot_proc() {
+#if TARGET_PC
+    bool zoom_done = advanceZoom(10.0f, FMAP_ZOOM_SPOT);
+#else
     mZoomLevel++;
     field_0x1ec = (f32)mZoomLevel / 10.0f;
     mpDraw2DBack->zoomMapCalc2(field_0x1ec);
+#endif
     mpDraw2DTop->setArrowAlphaRatio(dMenu_Fmap2DTop_c::ARROW_UP, 0.0f);
 
-    if (mZoomLevel >= 10) {
+    if (DUSK_IF_ELSE(zoom_done, mZoomLevel >= 10)) {
         setProcess(PROC_SPOT_MAP);
     }
 
+    IF_DUSK_BLOCK(!mPresenting)
     if (mStageCursor >= 0) {
         setFlash(mStageCursor, true);
     } else {
         mpMenuFmapMap->setFlashOff();
     }
+    IF_DUSK_BLOCK_END
 }
 
 void dMenu_Fmap_c::zoom_spot_to_region_init() {
@@ -1160,12 +1220,16 @@ void dMenu_Fmap_c::zoom_spot_to_region_init() {
 }
 
 void dMenu_Fmap_c::zoom_spot_to_region_proc() {
+#if TARGET_PC
+    bool zoom_done = advanceZoom(0.0f, FMAP_ZOOM_SPOT);
+#else
     mZoomLevel--;
     field_0x1ec = (f32)mZoomLevel / 10.0f;
     mpDraw2DBack->zoomMapCalc2(field_0x1ec);
+#endif
     mpDraw2DTop->setArrowAlphaRatio(dMenu_Fmap2DTop_c::ARROW_UP, 0.0f);
 
-    if (mZoomLevel <= 0) {
+    if (DUSK_IF_ELSE(zoom_done, mZoomLevel <= 0)) {
         if (mIsWarpMap == true) {
             setProcess(PROC_PORTAL_WARP_MAP);
         } else {
@@ -1173,11 +1237,13 @@ void dMenu_Fmap_c::zoom_spot_to_region_proc() {
         }
     }
 
+    IF_DUSK_BLOCK(!mPresenting)
     if (mStageCursor >= 0) {
         setFlash(mStageCursor, true);
     } else {
         mpMenuFmapMap->setFlashOff();
     }
+    IF_DUSK_BLOCK_END
 }
 
 void dMenu_Fmap_c::spot_map_init() {
@@ -1215,7 +1281,7 @@ void dMenu_Fmap_c::spot_map_proc() {
     } else if (dMw_A_TRIGGER() && !dMeter2Info_isTouchKeyCheck(0xc)
         && dMeter2Info_getMeterClass()->getMeterDrawPtr()->getInsideObjCheck() != 1)
     {
-        mpDraw2DBack->stageMapMove(mpStick, 1, true);
+        IF_NOT_DUSK(mpDraw2DBack->stageMapMove(mpStick, 1, true));
     } else if (dMw_Z_TRIGGER() && mpDraw2DTop->isWarpAccept()) {
 #if TARGET_PC || VERSION >= VERSION_GCN_JPN
         IF_DUSK_BLOCK(dusk::version::isRegionJpn())
@@ -1264,7 +1330,7 @@ void dMenu_Fmap_c::spot_map_proc() {
             mpDraw2DBack->zoomMapCalc2(field_0x1ec);
         }
 
-        mpDraw2DBack->stageMapMove(mpStick, 1, true);
+        IF_NOT_DUSK(mpDraw2DBack->stageMapMove(mpStick, 1, true));
 
         int stage_no, room_no;
         f32 pos_x = mpDraw2DBack->getMapAreaGlobalCenterPosX() - mDoGph_gInf_c::getMinXF()
@@ -1321,16 +1387,22 @@ void dMenu_Fmap_c::portal_demo1_init() {
 }
 
 void dMenu_Fmap_c::portal_demo1_move() {
+    IF_DUSK_BLOCK(!mPresenting)
     talkButton();
     mMsgFlow.doFlow(NULL, NULL, 0);
+    IF_DUSK_BLOCK_END
 
     if (dMsgObject_getMessageID() >= 2008 || mZoomLevel < 10) {
-        if (mZoomLevel == 10) {
+        if (mZoomLevel DUSK_IF_ELSE(>= 10 && !mPresenting, == 10)) {
             Z2GetAudioMgr()->seStart(Z2SE_SY_MAP_ZOOMOUT, NULL, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
         }
+#if TARGET_PC
+        bool zoom_done = advanceZoom(0.0f, FMAP_ZOOM_REGION);
+#else
         mZoomLevel--;
         mpDraw2DBack->zoomMapCalc((f32)mZoomLevel / 10.0f);
-        if (mZoomLevel <= 0) {
+#endif
+        if (DUSK_IF_ELSE(zoom_done, mZoomLevel <= 0)) {
             if (mpDraw2DBack->getAllPathShowFlag()) {
                 removeAreaData();
                 readWorldData(0xff);
@@ -1366,22 +1438,28 @@ void dMenu_Fmap_c::portal_demo3_init() {
 }
 
 void dMenu_Fmap_c::portal_demo3_move() {
+    IF_DUSK_BLOCK(!mPresenting)
     talkButton();
     mMsgFlow.doFlow(NULL, NULL, 0);
+    IF_DUSK_BLOCK_END
 
     if (dMsgObject_getMessageID() >= 2010 || mZoomLevel > 0) {
-        if (mZoomLevel == 0) {
+        if (mZoomLevel DUSK_IF_ELSE(<= 0 && !mPresenting, == 0)) {
             readWorldData(mpDraw2DBack->getRegionCursor() + 1);
             Z2GetAudioMgr()->seStart(Z2SE_SY_MAP_ZOOMIN, NULL, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
         }
+#if TARGET_PC
+        bool zoom_done = advanceZoom(10.0f, FMAP_ZOOM_REGION);
+#else
         mZoomLevel++;
         mpDraw2DBack->zoomMapCalc((f32)mZoomLevel / 10.0f);
-        if (mZoomLevel >= 10) {
+#endif
+        if (DUSK_IF_ELSE(zoom_done, mZoomLevel >= 10)) {
             setProcess(PROC_PORTAL_DEMO4);
         }
     }
 
-    if (mZoomLevel == 0) {
+    if (mZoomLevel DUSK_IF_ELSE(<=, ==) 0) {
         mpDraw2DBack->mapBlink();
     }
 }
@@ -1483,14 +1561,16 @@ void dMenu_Fmap_c::yamiboss_demo2_init() {
 
 void dMenu_Fmap_c::yamiboss_demo2_move() {
     if (dMsgObject_getMsgObjectClass()->getStatus() == 0xe) {
-        mZoomLevel++;
+        IF_DUSK_BLOCK(mPresenting)
+        DUSK_IF_ELSE(mZoomLevel += dusk::game_clock::original_frames(), mZoomLevel++);
+        IF_DUSK_BLOCK_END
             /* dSv_event_flag_c::M_086 - Twilight Hyrule Field - Show Boss Bug's Tear of Light on the map */
         if (dComIfGs_isEventBit(dSv_event_flag_c::saveBitLabels[0x77])) {
-            if (mZoomLevel > 90) {
+            if (mZoomLevel > 90 IF_DUSK(&& !mPresenting)) {
                 setProcess(PROC_YAMIBOSS_DEMO3);
             }
         } else {
-            if (mZoomLevel > 30) {
+            if (mZoomLevel > 30 IF_DUSK(&& !mPresenting)) {
                 field_0x30b = true;
                 /* dSv_event_flag_c::M_086 - Twilight Hyrule Field - Show Boss Bug's Tear of Light on the map */
                 dComIfGs_onEventBit(dSv_event_flag_c::saveBitLabels[0x77]);
@@ -1517,10 +1597,15 @@ void dMenu_Fmap_c::yamiboss_demo4_init() {
 }
 
 void dMenu_Fmap_c::yamiboss_demo4_move() {
+#if TARGET_PC
+    if (advanceZoom(10.0f, FMAP_ZOOM_SPOT))
+#else
     mZoomLevel++;
     field_0x1ec = (f32)mZoomLevel / 10.0f;
     mpDraw2DBack->zoomMapCalc2(field_0x1ec);
-    if (mZoomLevel >= 10) {
+    if (mZoomLevel >= 10)
+#endif
+    {
         setProcess(PROC_YAMIBOSS_DEMO5);
     }
 }
@@ -1569,8 +1654,10 @@ void dMenu_Fmap_c::light_demo1_init() {
 }
 
 void dMenu_Fmap_c::light_demo1_move() {
-    mZoomLevel++;
-    if (mZoomLevel > 0) {
+    IF_DUSK_BLOCK(mPresenting)
+    DUSK_IF_ELSE(mZoomLevel += dusk::game_clock::original_frames(), mZoomLevel++);
+    IF_DUSK_BLOCK_END
+    if (mZoomLevel > 0 IF_DUSK(&& !mPresenting)) {
         setProcess(PROC_LIGHT_DEMO2);
     }
 }
@@ -1615,13 +1702,18 @@ void dMenu_Fmap_c::table_demo1_init() {
 }
 
 void dMenu_Fmap_c::table_demo1_move() {
+#if TARGET_PC
+    bool se_at_one = mZoomLevel < 1;
+    bool zoom_done = advanceZoom(10.0f, FMAP_ZOOM_NONE);
+#else
     mZoomLevel++;
-    if (mZoomLevel == 1) {
+#endif
+    if (mZoomLevel DUSK_IF_ELSE(>= 1 && se_at_one, == 1)) {
         Z2GetAudioMgr()->seStart(Z2SE_SY_MAP_ZOOMIN, NULL, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
     }
     if (mZoomLevel > 0) {
         mpDraw2DBack->zoomMapCalc((f32)mZoomLevel / 10.0f);
-        if (mZoomLevel >= 10) {
+        if (DUSK_IF_ELSE(zoom_done, mZoomLevel >= 10)) {
             setProcess(PROC_TABLE_DEMO2);
         }
     }
@@ -1634,14 +1726,19 @@ void dMenu_Fmap_c::table_demo2_init() {
 }
 
 void dMenu_Fmap_c::table_demo2_move() {
+#if TARGET_PC
+    bool se_at_one = mZoomLevel < 1;
+    bool zoom_done = advanceZoom(10.0f, FMAP_ZOOM_NONE);
+#else
     mZoomLevel++;
-    if (mZoomLevel == 1) {
+#endif
+    if (mZoomLevel DUSK_IF_ELSE(>= 1 && se_at_one, == 1)) {
         Z2GetAudioMgr()->seStart(Z2SE_SY_MAP_ZOOMIN, NULL, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
     }
     if (mZoomLevel > 0) {
         field_0x1ec = (f32)mZoomLevel / 10.0f;
         mpDraw2DBack->zoomMapCalc2(field_0x1ec);
-        if (mZoomLevel >= 10) {
+        if (DUSK_IF_ELSE(zoom_done, mZoomLevel >= 10)) {
             setProcess(PROC_TABLE_DEMO3);
         }
     }
@@ -1667,14 +1764,19 @@ void dMenu_Fmap_c::howl_demo1_init() {
 }
 
 void dMenu_Fmap_c::howl_demo1_move() {
+#if TARGET_PC
+    bool se_at_one = mZoomLevel < 1;
+    bool zoom_done = advanceZoom(10.0f, FMAP_ZOOM_NONE);
+#else
     mZoomLevel++;
-    if (mZoomLevel == 1) {
+#endif
+    if (mZoomLevel DUSK_IF_ELSE(>= 1 && se_at_one, == 1)) {
         Z2GetAudioMgr()->seStart(Z2SE_SY_MAP_ZOOMIN, NULL, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f, 0);
     }
     if (mZoomLevel > 0) {
         field_0x1ec = (f32)mZoomLevel / 10.0f;
         mpDraw2DBack->zoomMapCalc2(field_0x1ec);
-        if (mZoomLevel >= 10) {
+        if (DUSK_IF_ELSE(zoom_done, mZoomLevel >= 10)) {
             setProcess(PROC_HOWL_DEMO2);
         }
     }
@@ -1685,8 +1787,10 @@ void dMenu_Fmap_c::howl_demo2_init() {
 }
 
 void dMenu_Fmap_c::howl_demo2_move() {
-    mZoomLevel++;
-    if (mZoomLevel > 0) {
+    IF_DUSK_BLOCK(mPresenting)
+    DUSK_IF_ELSE(mZoomLevel += dusk::game_clock::original_frames(), mZoomLevel++);
+    IF_DUSK_BLOCK_END
+    if (mZoomLevel > 0 IF_DUSK(&& !mPresenting)) {
         mpDraw2DBack->onArrowDrawFlag();
         setProcess(PROC_SPOT_MAP);
     }
@@ -1722,10 +1826,13 @@ bool dMenu_Fmap_c::isOpen() {
 
     s16 display_frame_num = (s16)g_fmapHIO.mDisplayFrameNum;
     s16 undisplay_frame_num = (s16)g_fmapHIO.mUndisplayFrameNum;
-    if (mDisplayFrame == 0) {
+    if (mDisplayFrame == 0 IF_DUSK(&& !mPresenting)) {
         init = true;
     }
-    mDisplayFrame++;
+    IF_DUSK(mOpenCloseDir = 1);
+    IF_DUSK_BLOCK(mPresenting)
+    DUSK_IF_ELSE(dusk::vdt::advance_toward_frame(mDisplayFrame, display_frame_num, 1.0f), mDisplayFrame++);
+    IF_DUSK_BLOCK_END
     f32 ratio = (f32)mDisplayFrame / (f32)display_frame_num;
 
     if (mPanDirection == 1) {
@@ -1745,17 +1852,19 @@ bool dMenu_Fmap_c::isOpen() {
     mAlphaRatio = ratio;
 
     if (mDisplayFrame >= display_frame_num) {
-        mDisplayFrame = undisplay_frame_num;
+        mDisplayFrame = DUSK_IF_ELSE(mPresenting ? display_frame_num : undisplay_frame_num, undisplay_frame_num);
         mTransX = 0.0f;
         mTransY = 0.0f;
         mAlphaRatio = 1.0f;
         ret = true;
+        IF_DUSK(mOpenCloseDir = 0);
     }
 
     mpDraw2DBack->setAllTrans(mTransX, mTransY);
     mpDraw2DBack->setAllAlphaRate(mAlphaRatio, init);
     mpDraw2DTop->setAllTrans(mTransX, mTransY);
     mpDraw2DTop->setAllAlphaRate(mAlphaRatio, init);
+    IF_DUSK(mpDraw2DTop->setMoyaAlpha(g_fmHIO.mMoyaAlpha));
     mpDraw2DBack->setSpotTextureFadeAlpha(mSpotTextureFadeAlpha);
 
     return ret;
@@ -1766,14 +1875,18 @@ bool dMenu_Fmap_c::isClose() {
     bool bVar2 = false;
     
     s16 undisplay_frame_num = (s16)g_fmapHIO.mUndisplayFrameNum;
-    if (mDisplayFrame == undisplay_frame_num) {
+    if (mDisplayFrame == undisplay_frame_num IF_DUSK(&& !mPresenting)) {
         bVar2 = true;
     }
-    mDisplayFrame--;
+    IF_DUSK(mOpenCloseDir = -1);
+    IF_DUSK_BLOCK(mPresenting)
+    DUSK_IF_ELSE(dusk::vdt::advance_toward_frame(mDisplayFrame, 0.0f, 1.0f), mDisplayFrame--);
+    IF_DUSK_BLOCK_END
     f32 ratio = (f32)mDisplayFrame / (f32)undisplay_frame_num;
 
     if (mDisplayFrame <= 0) {
         mDisplayFrame = 0;
+        IF_DUSK(mOpenCloseDir = 0);
     } else {
         ret = false;
     }
@@ -1798,6 +1911,7 @@ bool dMenu_Fmap_c::isClose() {
     mpDraw2DBack->setAllAlphaRate(mAlphaRatio, bVar2);
     mpDraw2DTop->setAllTrans(mTransX, mTransY);
     mpDraw2DTop->setAllAlphaRate(mAlphaRatio, bVar2);
+    IF_DUSK(mpDraw2DTop->setMoyaAlpha(g_fmHIO.mMoyaAlpha));
 
     return ret;
 }
@@ -2475,7 +2589,7 @@ void dMenu_Fmap_c::setAreaNameZero() {
 }
 
 void dMenu_Fmap_c::portalWarpMapMove(STControl* i_stick) {
-    mpDraw2DBack->regionMapMove(i_stick);
+    IF_NOT_DUSK(mpDraw2DBack->regionMapMove(i_stick));
     dMenu_Fmap_portal_data_c* portal_dat = mpPortalDat;
     dMenu_Fmap_portal_data_c::data* portals = portal_dat->mData;
     f32 arrow_x = mpDraw2DBack->getArrowPos2DX();

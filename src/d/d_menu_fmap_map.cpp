@@ -11,6 +11,7 @@
 #include <cstring>
 
 #if TARGET_PC
+#include "dusk/game_clock.h"
 #include <dolphin/gx/GXExtra.h>
 #endif
 
@@ -508,6 +509,20 @@ void dMenu_FmapMap_c::_delete() {
 
 DUSK_GAME_DATA const dMfm_HIO_prm_res_src_s dMfm_HIO_prm_res_src_s::m_other = {30};
 
+#if TARGET_PC
+void dMenu_FmapMap_c::presentRendering(dMenu_Fmap_world_data_c* i_worldData, int i_startStageNo,
+                                       f32 i_posX, f32 i_posY, f32 i_scale, f32 i_zoomRate) {
+    mZoomRate = i_zoomRate;
+    mpWorldData = i_worldData;
+    mStartStageNo = i_startStageNo;
+    mPosX = i_posX;
+    mPosZ = i_posY;
+    mCmPerTexel = i_scale;
+    field_0x8 = mCmPerTexel * field_0x20 * mDoGph_gInf_c::getScale();
+    field_0xc = mCmPerTexel * field_0x22;
+}
+#endif
+
 void dMenu_FmapMap_c::draw() {
     { int unused; }
 
@@ -685,8 +700,8 @@ void dMenu_FmapMap_c::setRendering(dMenu_Fmap_world_data_c* i_worldData, int i_s
         mLastFlash = mFlash;
         mLastStageCursor = mStageCursor;
     } else {
-        if (mFlashTimer != 0) {
-            mFlashTimer--;
+        if (mFlashTimer DUSK_IF_ELSE(>, !=) 0) {
+            DUSK_IF_ELSE(mFlashTimer -= dusk::game_clock::original_frames(), mFlashTimer--);
         } else {
             mFlashTimer = dMfm_HIO_prm_res_src_s::m_other.mFlashDuration;
         }

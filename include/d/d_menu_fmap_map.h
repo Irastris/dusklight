@@ -172,6 +172,9 @@ public:
     ~dMenu_FmapMap_c();
     void _create(u16, u16, u16, u16, void*);
     void _delete();
+#if TARGET_PC
+    void presentRendering(dMenu_Fmap_world_data_c*, int, f32, f32, f32, f32);
+#endif
     void draw();
     void rendering(line_class const*);
     int getLineWidth(int);
@@ -224,7 +227,7 @@ public:
     /* 0xDC */ int mStageCursor;
     /* 0xE0 */ int mLastStageCursor;
     /* 0xE4 */ u8 mRegionCursor;
-    /* 0xE5 */ u8 mFlashTimer;
+    /* 0xE5 */ DUSK_IF_ELSE(f32, u8) mFlashTimer;
     /* 0xE8 */ u8* mp_roomList;
     /* 0xEC */ int m_roomListNumber;
 

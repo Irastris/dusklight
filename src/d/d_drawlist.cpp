@@ -16,6 +16,7 @@
 #if TARGET_PC
 #include "dusk/game_clock.h"
 #include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/vdt.h"
 #include "dusk/logging.h"
 #include "helpers/gx_helper.h"
 
@@ -1998,6 +1999,12 @@ void dDlst_list_c::drawXluListItem3d() {
 }
 
 int dDlst_list_c::set(dDlst_base_c**& p_start, dDlst_base_c**& p_end, dDlst_base_c* p_newDlst) {
+#if TARGET_PC
+    if (!dusk::game_clock::is_sim_frame()) {
+        return 0;
+    }
+#endif
+
     if (p_start >= p_end) {
         return 0;
     }
