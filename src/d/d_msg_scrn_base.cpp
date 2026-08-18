@@ -71,11 +71,22 @@ void dMsgScrnBase_c::multiDraw() {
     }
 }
 
+#if TARGET_PC
+void dMsgScrnBase_c::presentAnims() {
+    if (dMsgObject_c* msg = dMsgObject_getMsgObjectClass()) {
+        if (msg->getScrnDrawPtrLocal() == this) {
+            msg->presentAnims();
+        }
+    }
+}
+#endif
+
 void dMsgScrnBase_c::draw() {
 #if TARGET_PC
     if (dusk::getSettings().game.recordingMode) {
         return;
     }
+    presentAnims();
 #endif
     J2DGrafContext* ctx = dComIfGp_getCurrentGrafPort();
 

@@ -14,6 +14,7 @@
 #include "d/d_pane_class.h"
 
 #if TARGET_PC
+#include "dusk/interp/vdt.h"
 #include "dusk/settings.h"
 #include "dusk/version.hpp"
 #endif
@@ -204,7 +205,16 @@ dMsgScrnKanban_c::~dMsgScrnKanban_c() {
     dComIfGp_getMsgArchive(2)->removeResourceAll();
 }
 
+#if TARGET_PC
+void dMsgScrnKanban_c::presentAnims() {
+    dMsgScrnBase_c::presentAnims();
+    dusk::vdt::present_looping(field_0xd8, field_0xd0, 1.0f);
+    mpScreen->animation();
+}
+#endif
+
 void dMsgScrnKanban_c::exec() {
+#if !TARGET_PC
     field_0xd8 += 1.0f;
     if (field_0xd8 >= field_0xd0->getFrameMax()) {
         field_0xd8 -= field_0xd0->getFrameMax();
@@ -212,6 +222,7 @@ void dMsgScrnKanban_c::exec() {
 
     field_0xd0->setFrame(field_0xd8);
     mpScreen->animation();
+#endif
 
     if (isTalkNow()) {
         fukiAlpha(1.0f);
@@ -225,6 +236,7 @@ void dMsgScrnKanban_c::draw() {
     if (dusk::getSettings().game.recordingMode) {
         return;
     }
+    presentAnims();
 #endif
     J2DGrafContext* grafContext = dComIfGp_getCurrentGrafPort();
     grafContext->setup2D();

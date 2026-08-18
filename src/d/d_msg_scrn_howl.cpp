@@ -21,7 +21,8 @@
 #include "m_Do/m_Do_graphic.h"
 
 #if TARGET_PC
-#include "dusk/interp/frame_interpolation.h"
+#include "dusk/game_clock.h"
+#include "dusk/interp/vdt.h"
 #include "dusk/settings.h"
 #endif
 
@@ -148,6 +149,10 @@ dMsgScrnHowl_c::dMsgScrnHowl_c() {
     field_0x2124 = 0;
     field_0x2128 = 0;
     mPlotTime = 0;
+#if TARGET_PC
+    mSampleAcc = 0.0f;
+    mPulseFrame = 0.0f;
+#endif
     field_0x212c = 0;
     field_0x212e = 0;
     field_0x2126 = 0;
@@ -289,18 +294,52 @@ dMsgScrnHowl_c::~dMsgScrnHowl_c() {
     dComIfGp_getMsgArchive(5)->removeResourceAll();;
 }
 
+#if TARGET_PC
+void dMsgScrnHowl_c::presentAnims() {
+    dMsgScrnBase_c::presentAnims();
+    for (int i = 0; i < 0x300; i++) {
+        if (field_0x1b14[i] > 0) {
+            dusk::vdt::advance_toward_frame(field_0x1b14[i], 0.0f, 1.0f);
+        }
+    }
+    f32 alphaRate = mpPmP_c->getAlphaRate();
+    f32 fVar1;
+    f32 fVar2;
+    if (field_0x2798 == 3) {
+        fVar1 = 0.5f;
+        fVar2 = 0.0f;
+    } else {
+        fVar1 = 1.0f;
+        fVar2 = 1.0f;
+    }
+    if (field_0x1994 != fVar1) {
+        dusk::vdt::present_addCalc2(&field_0x1994, fVar1, 0.2f, 1.0f, 0.1f);
+    }
+    if (field_0x1998 != fVar2) {
+        dusk::vdt::present_addCalc2(&field_0x1998, fVar2, 0.2f, 1.0f, 0.1f);
+    }
+    mpButtonIcon[0]->setAlphaRate(field_0x1994 * alphaRate);
+    mpButtonIcon[1]->setAlphaRate(field_0x1994 * alphaRate);
+    mpButtonText[0]->setAlphaRate(field_0x1998 * alphaRate);
+    mpButtonText[1]->setAlphaRate(field_0x1998 * alphaRate);
+}
+#endif
+
 void dMsgScrnHowl_c::exec() {
     field_0x2799 = field_0x2798;
     (this->*process[field_0x2798])();
+#if !TARGET_PC
     for (int i = 0; i < 0x300; i++) {
         if (field_0x1b14[i] > 0) {
             field_0x1b14[i]--;
         }
     }
+#endif
     if (field_0x2799 != field_0x2798) {
         (this->*init_proc[field_0x2798])();
     }
-    
+
+#if !TARGET_PC
     f32 alphaRate = mpPmP_c->getAlphaRate();
     f32 fVar1;
     f32 fVar2;
@@ -327,6 +366,7 @@ void dMsgScrnHowl_c::exec() {
     mpButtonIcon[1]->setAlphaRate(field_0x1994 * alphaRate);
     mpButtonText[0]->setAlphaRate(field_0x1998 * alphaRate);
     mpButtonText[1]->setAlphaRate(field_0x1998 * alphaRate);
+#endif
 
 #if TARGET_PC
     showCursor = true;
@@ -467,6 +507,7 @@ void dMsgScrnHowl_c::resetLine() {
     field_0x2195 = 0;
     field_0x2128 = 0;
     mPlotTime = 0;
+    IF_DUSK(mSampleAcc = 0.0f);
     field_0x212c = 0;
     field_0x212e = 0;
     field_0x2124 = 0;
@@ -597,19 +638,23 @@ void dMsgScrnHowl_c::drawWave() {
                 f18 = local_64;
             } else {
 #if TARGET_PC
-                if (dusk::interp::get_ui_tick_pending())
-#endif
-                {
-                    field_0x2134++;
-                    if (field_0x2134 > 30) {
-                        field_0x2134 = 0;
-                    }
+                dusk::vdt::advance_looping_frame(mPulseFrame, 1.0f, 31.0f);
+                if (mPulseFrame < 15.0f) {
+                    local_dc = mPulseFrame / 15.0f;
+                } else {
+                    local_dc = (30.0f - mPulseFrame) / 15.0f;
+                }
+#else
+                field_0x2134++;
+                if (field_0x2134 > 30) {
+                    field_0x2134 = 0;
                 }
                 if (field_0x2134 < 15) {
                     local_dc = field_0x2134 / 15.0f;
                 } else {
                     local_dc = (30.0f - field_0x2134) / 15.0f;
                 }
+#endif
                 f17 = f26;
                 f18 = local_e4;
             }
@@ -882,6 +927,19 @@ void dMsgScrnHowl_c::drawEffect() {
 }
 
 void dMsgScrnHowl_c::calcMain() {
+#if TARGET_PC
+    mSampleAcc += dusk::game_clock::original_frames();
+    while (mSampleAcc >= 1.0f) {
+        mSampleAcc -= 1.0f;
+        if (mPlotTime < field_0x2138 + 380) {
+            mPlotTime++;
+        } else {
+            field_0x212c--;
+        }
+        calcWave();
+        calcGuide();
+    }
+#else
     if (mPlotTime < field_0x2138 + 380) {
         mPlotTime++;
     } else {
@@ -889,6 +947,7 @@ void dMsgScrnHowl_c::calcMain() {
     }
     calcWave();
     calcGuide();
+#endif
 }
 
 void dMsgScrnHowl_c::calcWave() {

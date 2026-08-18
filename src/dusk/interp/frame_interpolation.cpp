@@ -35,7 +35,6 @@ bool s_replacementsActive = false;
 bool s_syncPresentation = false;
 
 float s_step = 0.0f;
-bool s_uiTickPending = false;
 uint64_t s_simTickSeq = 0;
 uint64_t s_observedPresentationEpoch = 0;
 
@@ -217,15 +216,6 @@ bool presentation_sync_active() {
 
 float get_interpolation_step() {
     return presentation_sync_active() ? 1.0f : s_step;
-}
-
-void set_ui_tick_pending(bool value) {
-    if (s_uiTickPending == value) { return; }
-    s_uiTickPending = value;
-}
-
-bool get_ui_tick_pending() {
-    return is_enabled() ? s_uiTickPending : true;
 }
 
 void record_final_mtx(Mtx m, const void* key) {

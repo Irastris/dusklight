@@ -22,10 +22,6 @@ bool presentation_sync_active();
 
 bool is_enabled();
 
-// TODO: These should be phased out as UI is progressively updated to use game_clock
-void set_ui_tick_pending(bool value);
-bool get_ui_tick_pending();
-
 void record_final_mtx(Mtx m, const void* key);
 void record_final_mtx(Mtx m);
 bool override_presentation_mtx(const void* key, const Mtx value);

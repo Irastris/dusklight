@@ -22,6 +22,9 @@ public:
     int _execute();
     int _draw();
     int _delete();
+#if TARGET_PC
+    void presentAnims();
+#endif
     void setMessageIndex(u32, u32, bool);
     void setMessageIndexDemo(u32, bool);
     u32 getMessageIndex(u32);
@@ -285,7 +288,7 @@ public:
     /* 0x164 */ u16 mNodeIdx;
     /* 0x166 */ u16 field_0x166;
     /* 0x168 */ u16 field_0x168;
-    /* 0x16A */ s16 field_0x16a;
+    /* 0x16A */ DUSK_IF_ELSE(f32, s16) field_0x16a;
     /* 0x16C */ s16 mCurrentGroupID;  // group whose BMG is parsed; -1 none, 0 common, 1-8 stage
     /* 0x16E */ s16 field_0x16e;
     /* 0x170 */ s16 mNowTalkFlowNo;

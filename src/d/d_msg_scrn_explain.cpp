@@ -15,6 +15,7 @@
 #include <cstring>
 
 #if TARGET_PC
+#include "dusk/interp/vdt.h"
 #include "dusk/version.hpp"
 #endif
 
@@ -346,7 +347,32 @@ void dMsgScrnExplain_c::move() {
                                      g_MsgObject_HIO_c.mBoxTalkScaleY);
 }
 
+#if TARGET_PC
+void dMsgScrnExplain_c::presentAnims() {
+    if (mStatus == STATUS_OPEN_e) {
+        dusk::vdt::advance_toward_frame(field_0x5a, 5.0f, 1.0f);
+        field_0x48 = FB_WIDTH_BASE * getAlphaRatio();
+        for (int i = 0; i < 2; i++) {
+            mpRoot_c[i]->setAlphaRate(1.0f - getAlphaRatio());
+        }
+        if (mpBackTex != NULL) {
+            mpBackTex->setAlpha((1.0f - getAlphaRatio()) * 150.0f);
+        }
+    } else if (mStatus == STATUS_CLOSE_e) {
+        dusk::vdt::advance_toward_frame(field_0x5a, 0.0f, 1.0f);
+        field_0x48 = FB_WIDTH_BASE * getAlphaRatio();
+        for (int i = 0; i < 2; i++) {
+            mpRoot_c[i]->setAlphaRate(1.0f - getAlphaRatio());
+        }
+        if (mpBackTex != NULL) {
+            mpBackTex->setAlpha(150.0f * (1.0f - getAlphaRatio()));
+        }
+    }
+}
+#endif
+
 void dMsgScrnExplain_c::draw(J2DOrthoGraph* i_graf) {
+    IF_DUSK(presentAnims());
     if (mStatus == STATUS_WAIT_e || mStatus == STATUS_OPEN_REQ_e) {
         return;
     }
@@ -445,7 +471,7 @@ void dMsgScrnExplain_c::open_init() {
 }
 
 void dMsgScrnExplain_c::open_proc() {
-    field_0x5a++;
+    IF_NOT_DUSK(field_0x5a++);
     if (field_0x5a >= 5) {
         field_0x5a = 5;
         if (field_0x64 == 1 || field_0x64 == 2) {
@@ -627,7 +653,7 @@ void dMsgScrnExplain_c::close_proc() {
         iVar1 = true;
     }
 
-    field_0x5a--;
+    IF_NOT_DUSK(field_0x5a--);
     if (field_0x5a <= 0) {
         field_0x5a = 0;
         if (iVar1) {

@@ -30,9 +30,7 @@
 #include "m_Do/m_Do_lib.h"
 
 #if TARGET_PC
-#include <algorithm>
-#include <array>
-#include <vector>
+#include "dusk/interp/vdt.h"
 #include "dusk/language.hpp"
 #include "dusk/logging.h"
 #include "dusk/menu_pointer.h"
@@ -40,6 +38,11 @@
 #include "dusk/mods/svc/flow.hpp"
 #include "dusk/settings.h"
 #include "dusk/version.hpp"
+#include <algorithm>
+#include <array>
+#include <vector>
+
+#include "d_msg_object_vdt.inc"
 #endif
 
 static void dMsgObject_addFundRaising(s16 param_0);
@@ -961,7 +964,7 @@ void dMsgObject_c::waitProc() {
 void dMsgObject_c::openProc() {
     if (isMidonaMessage()) {
         bool uVar12 = 0;
-        if (field_0x16a == 0) {
+        if (DUSK_IF_ELSE(!mpScrnDraw->isSelectAnimeActive(), field_0x16a == 0)) {
             jmessage_tReference* pRef = (jmessage_tReference*)mpRenProc->getReference();
             field_0x1a3 = 0;
             if (mpRefer->getMsgID() == 0x7fa) {
@@ -995,7 +998,7 @@ void dMsgObject_c::openProc() {
             }
         }
     }
-    field_0x16a++;
+    IF_NOT_DUSK(field_0x16a++);
     s16 sVar7;
     if (isKanbanMessage()) {
         sVar7 = g_MsgObject_HIO_c.mBoxAppearFrame;
@@ -1062,12 +1065,12 @@ void dMsgObject_c::openProc() {
 
 void dMsgObject_c::outnowProc() {
     mpRefer->shiftCharCountBuffer();
-    if (isBookMessage() && field_0x16a > 0) {
-        field_0x16a--;
+    if (isBookMessage() && field_0x16a DUSK_IF_ELSE(>, !=) 0) {
+        IF_NOT_DUSK(field_0x16a--);
         f32 alpha = (10 - field_0x16a) / 10.0f;
         mpScrnDraw->fontAlpha(alpha);
         mpOutFont->setAlphaRatio(alpha);
-        if (field_0x16a > 0) {
+        if (field_0x16a DUSK_IF_ELSE(>, !=) 0) {
             return;
         }
     }
@@ -1077,7 +1080,7 @@ void dMsgObject_c::outnowProc() {
         if (mDoCPd_c::getTrigA(0)) {
             pRef->setCharAllAlphaRate(1.0f);
         } else {
-            pRef->addCharAllAlphaRate();
+            IF_NOT_DUSK(pRef->addCharAllAlphaRate());
         }
         f32 alpha = pRef->getCharAllAlphaRate();
         mpScrnDraw->setCharAlphaRate(alpha);
@@ -1131,8 +1134,8 @@ void dMsgObject_c::outwaitProc() {
         (jmessage_tReference*)mpRenProc->getReference();
     mpScrnDraw->arwAnimeMove();
     if (isBookMessage()) {
-        if (isSend() || field_0x16a > 0) {
-            field_0x16a++;
+        if (isSend() || field_0x16a DUSK_IF_ELSE(>, !=) 0) {
+            IF_NOT_DUSK(field_0x16a++);
             if (field_0x16a <= 10) {
                 f32 alpha = (10 - field_0x16a) / 10.0f;
                 mpScrnDraw->fontAlpha(alpha);
@@ -1413,7 +1416,7 @@ void dMsgObject_c::finishProc() {
 }
 
 void dMsgObject_c::endProc() {
-    field_0x16a++;
+    IF_NOT_DUSK(field_0x16a++);
     s16 sVar4 = 5;
     if (isKanbanMessage() || isBookMessage()) {
         sVar4 = g_MsgObject_HIO_c.field_0x304;

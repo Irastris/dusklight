@@ -17,6 +17,7 @@
 #include "d/d_pane_class.h"
 
 #if TARGET_PC
+#include "dusk/interp/vdt.h"
 #include "dusk/menu_pointer.h"
 #include "dusk/version.hpp"
 
@@ -315,6 +316,9 @@ dMsgScrn3Select_c::dMsgScrn3Select_c() {
     mDPDPoint = 0xFF;
     field_0x116 = 0xFF;
     field_0x117 = 0;
+#if TARGET_PC
+    mPresenting = false;
+#endif
 
     mSelMsgInactiveCol.set(0xFF, 0xFF, 0xFF, 0xFF);
 }
@@ -441,7 +445,34 @@ void dMsgScrn3Select_c::translate(f32 i_x, f32 i_y) {
     mpParent->translate(i_x, i_y);
 }
 
+#if TARGET_PC
+void dMsgScrn3Select_c::presentAnims() {
+    if (mProcess >= PROC_MAX_e) {
+        return;
+    }
+    mPresenting = true;
+    (this->*process[mProcess])();
+    dusk::vdt::present_looping(mBpkFrame, mpAnmBpk, 1.0f);
+    dusk::vdt::present_looping(mBtkFrame, mpAnmBtk, 1.0f);
+    mpScreen->animation();
+
+    for (int i = 0; i < 3; i++) {
+        if (i == mSelNo) {
+            mpSelCld_c[i]->getPanePtr()->scale(1.0f, 1.0f);
+            mpSelCldr_c[i]->getPanePtr()->scale(1.0f, 1.0f);
+        } else {
+            mpSelCld_c[i]->getPanePtr()->scale(0.0f, 0.0f);
+            mpSelCldr_c[i]->getPanePtr()->scale(0.0f, 0.0f);
+        }
+    }
+    selectTrans();
+
+    mPresenting = false;
+}
+#endif
+
 void dMsgScrn3Select_c::draw(f32 i_xPos, f32 i_yPos) {
+    IF_DUSK(presentAnims());
     J2DGrafContext* port = dComIfGp_getCurrentGrafPort();
     port->setup2D();
 
@@ -574,10 +605,14 @@ bool dMsgScrn3Select_c::selAnimeMove(u8 i_selNum, u8 param_1, bool param_2) {
     field_0x108 = param_2;
 #if TARGET_PC
     pointerMove();
+    if (mProcess >= PROC_MAX_e) {
+        return false;
+    }
 #endif
 
     (this->*process[mProcess])();
 
+#if !TARGET_PC
     mBpkFrame++;
     if (mBpkFrame >= mpAnmBpk->getFrameMax()) {
         mBpkFrame -= mpAnmBpk->getFrameMax();
@@ -603,6 +638,7 @@ bool dMsgScrn3Select_c::selAnimeMove(u8 i_selNum, u8 param_1, bool param_2) {
     }
 
     selectTrans();
+#endif
 
     for (int i = 0; i < 3; i++) {
         if (i == mSelNo) {
@@ -689,6 +725,7 @@ bool dMsgScrn3Select_c::selAnimeEnd() {
 
     (this->*process[mProcess])();
 
+#if !TARGET_PC
     mBpkFrame++;
     if (mBpkFrame >= mpAnmBpk->getFrameMax()) {
         mBpkFrame -= mpAnmBpk->getFrameMax();
@@ -702,6 +739,7 @@ bool dMsgScrn3Select_c::selAnimeEnd() {
     mpAnmBtk->setFrame(mBtkFrame);
 
     mpScreen->animation();
+#endif
 
     for (int i = 0; i < 3; i++) {
         if (i == mSelNo) {
@@ -778,7 +816,13 @@ void dMsgScrn3Select_c::open1Proc() {
 void dMsgScrn3Select_c::open2Proc() {
     f32 sel_anm_frame[3] = {204.0f, 304.0f, 404.0f};
 
+#if TARGET_PC
+    if (mPresenting) {
+        dusk::vdt::advance_toward_frame(mBckFrame, 199.0f, 1.0f);
+    }
+#else
     mBckFrame++;
+#endif
     mpSelectCursor->setAlphaRate(1.0f);
 
     if (mBckFrame >= 199.0f) {
@@ -903,7 +947,13 @@ void dMsgScrn3Select_c::changeProc() {
                 if (field_0x108 != 0) {
                     mBckFrame = 303.0f;
                 } else {
+#if TARGET_PC
+                    if (mPresenting) {
+                        dusk::vdt::advance_toward_frame(mBckFrame, 303.0f, 1.0f);
+                    }
+#else
                     mBckFrame++;
+#endif
                 }
 
                 selectAnimeTransform(0);
@@ -915,7 +965,13 @@ void dMsgScrn3Select_c::changeProc() {
                 if (field_0x108 != 0) {
                     mBckFrame = 403.0f;
                 } else {
+#if TARGET_PC
+                    if (mPresenting) {
+                        dusk::vdt::advance_toward_frame(mBckFrame, 403.0f, 1.0f);
+                    }
+#else
                     mBckFrame++;
+#endif
                 }
 
                 selectAnimeTransform(0);
@@ -930,7 +986,13 @@ void dMsgScrn3Select_c::changeProc() {
                 if (field_0x108 != 0) {
                     mBckFrame = 300.0f;
                 } else {
+#if TARGET_PC
+                    if (mPresenting) {
+                        dusk::vdt::advance_toward_frame(mBckFrame, 300.0f, 1.0f);
+                    }
+#else
                     mBckFrame--;
+#endif
                 }
 
                 selectAnimeTransform(1);
@@ -942,7 +1004,13 @@ void dMsgScrn3Select_c::changeProc() {
                 if (field_0x108 != 0) {
                     mBckFrame = 403.0f;
                 } else {
+#if TARGET_PC
+                    if (mPresenting) {
+                        dusk::vdt::advance_toward_frame(mBckFrame, 403.0f, 1.0f);
+                    }
+#else
                     mBckFrame++;
+#endif
                 }
 
                 selectAnimeTransform(1);
@@ -957,7 +1025,13 @@ void dMsgScrn3Select_c::changeProc() {
                 if (field_0x108 != 0) {
                     mBckFrame = 400.0f;
                 } else {
+#if TARGET_PC
+                    if (mPresenting) {
+                        dusk::vdt::advance_toward_frame(mBckFrame, 400.0f, 1.0f);
+                    }
+#else
                     mBckFrame--;
+#endif
                 }
 
                 selectAnimeTransform(2);
@@ -969,7 +1043,13 @@ void dMsgScrn3Select_c::changeProc() {
                 if (field_0x108 != 0) {
                     mBckFrame = 300.0f;
                 } else {
+#if TARGET_PC
+                    if (mPresenting) {
+                        dusk::vdt::advance_toward_frame(mBckFrame, 300.0f, 1.0f);
+                    }
+#else
                     mBckFrame--;
+#endif
                 }
 
                 selectAnimeTransform(2);
@@ -985,7 +1065,13 @@ void dMsgScrn3Select_c::changeProc() {
 
 void dMsgScrn3Select_c::closeProc() {
     mpSelectCursor->setAlphaRate(0.0f);
+#if TARGET_PC
+    if (mPresenting) {
+        dusk::vdt::advance_toward_frame(mBckFrame, 190.0f, 1.0f);
+    }
+#else
     mBckFrame--;
+#endif
 
     for (int i = 0; i < 3; i++) {
         f32 scale_x = mpSel_c[i]->getPanePtr()->getScaleX();
