@@ -1466,10 +1466,11 @@ set(DUSK_FILES
         src/dusk/interp/camera.cpp
         src/dusk/interp/dual_buffer.cpp
         src/dusk/interp/frame_interpolation.cpp
+        src/dusk/interp/material.cpp
         src/dusk/interp/matrix.cpp
         src/dusk/interp/pane.cpp
-        src/dusk/interp/vdt.cpp
         src/dusk/interp/skeleton.cpp
+        src/dusk/interp/vdt.cpp
         src/dusk/io.cpp
         src/dusk/iso_validate.cpp
         src/dusk/language.cpp

@@ -26,8 +26,9 @@
 #include <cstring>
 
 #if TARGET_PC
-#include "dusk/interp/frame_interpolation.h"
 #include "dusk/game_clock.h"
+#include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/material.h"
 #include "dusk/interp/skeleton.h"
 #include "dusk/logging.h"
 #include "dusk/version.hpp"
@@ -149,9 +150,20 @@ int mDoExt_bpkAnm::init(J3DMaterialTable* i_matTable, J3DAnmColor* i_bpk, int i_
 }
 
 void mDoExt_bpkAnm::entry(J3DMaterialTable* i_matTable, f32 i_frame) {
+    IF_DUSK(i_frame = dusk::interp::material::resolve_entry_frame(this, mpAnm, i_frame));
     mpAnm->setFrame(i_frame);
     i_matTable->entryMatColorAnimator(mpAnm);
 }
+
+#if TARGET_PC
+int mDoExt_bpkAnm::play() {
+    return dusk::interp::material::play(this, mpAnm);
+}
+
+void mDoExt_bpkAnm::entryFrame(f32 frame) {
+    mpAnm->setFrame(dusk::interp::material::resolve_entry_frame(this, mpAnm, frame));
+}
+#endif
 
 int mDoExt_btpAnm::init(J3DMaterialTable* i_matTable, J3DAnmTexPattern* i_btp, int i_anmPlay,
                         int i_attribute, f32 i_rate, s16 i_startF, s16 i_endF) {
@@ -187,9 +199,20 @@ int mDoExt_btkAnm::init(J3DMaterialTable* i_matTable, J3DAnmTextureSRTKey* i_btk
 }
 
 void mDoExt_btkAnm::entry(J3DMaterialTable* i_matTable, f32 i_frame) {
+    IF_DUSK(i_frame = dusk::interp::material::resolve_entry_frame(this, mpAnm, i_frame));
     mpAnm->setFrame(i_frame);
     i_matTable->entryTexMtxAnimator(mpAnm);
 }
+
+#if TARGET_PC
+int mDoExt_btkAnm::play() {
+    return dusk::interp::material::play(this, mpAnm);
+}
+
+void mDoExt_btkAnm::entryFrame(f32 frame) {
+    mpAnm->setFrame(dusk::interp::material::resolve_entry_frame(this, mpAnm, frame));
+}
+#endif
 
 int mDoExt_brkAnm::init(J3DMaterialTable* i_matTable, J3DAnmTevRegKey* i_brk, int i_anmPlay,
                         int i_attribute, f32 i_rate, s16 i_startF, s16 i_endF) {
@@ -206,9 +229,20 @@ int mDoExt_brkAnm::init(J3DMaterialTable* i_matTable, J3DAnmTevRegKey* i_brk, in
 }
 
 void mDoExt_brkAnm::entry(J3DMaterialTable* i_matTable, f32 i_frame) {
+    IF_DUSK(i_frame = dusk::interp::material::resolve_entry_frame(this, mpAnm, i_frame));
     mpAnm->setFrame(i_frame);
     i_matTable->entryTevRegAnimator(mpAnm);
 }
+
+#if TARGET_PC
+int mDoExt_brkAnm::play() {
+    return dusk::interp::material::play(this, mpAnm);
+}
+
+void mDoExt_brkAnm::entryFrame(f32 frame) {
+    mpAnm->setFrame(dusk::interp::material::resolve_entry_frame(this, mpAnm, frame));
+}
+#endif
 
 void dummy3(J3DModel* i_model, void* i_bva, bool i_modify) {
     JUT_ASSERT(0, (i_modify || isCurrentSolidHeap()) && i_model != NULL && i_bva != NULL);
@@ -366,6 +400,7 @@ void mDoExt_modelEntryDL(J3DModel* i_model) {
         // FRAME INTERP NOTE: This fixes issue #355 where some lights would flicker.
         // This is likely better solved by updating J3DMaterial::needsInterpCallBack,
         // but it's unclear what exactly needs to be added.
+        i_model->calcMaterial();
         i_model->diff();
         return;
     }

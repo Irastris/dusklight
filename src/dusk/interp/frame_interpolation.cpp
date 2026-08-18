@@ -2,7 +2,7 @@
 
 #include "dusk/game_clock.h"
 #include "dusk/interp/dual_buffer.h"
-#include "dusk/interp/lerp.h"
+#include "dusk/interp/material.h"
 #include "dusk/interp/matrix.h"
 #include "dusk/interp/skeleton.h"
 
@@ -279,6 +279,7 @@ void begin_presentation(float step) {
         return;
     }
 
+    dusk::interp::material::apply_presentation_frames();
     interpolate_replacements();
 
     if (s_presentationDepth > 0) {
@@ -307,7 +308,6 @@ void end_presentation() {
 bool is_presentation_active() {
     return s_presentationDepth > 0;
 }
-
 
 void add_interpolation_callback(InterpolationCallBack pCallBack, void* pUserWork) {
     add_presentation_callbacks(pCallBack, nullptr, pUserWork);

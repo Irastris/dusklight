@@ -67,6 +67,9 @@ public:
     int init(J3DMaterialTable* i_matTable, J3DAnmTextureSRTKey* i_btk, int i_anmPlay,
                             int i_attribute, f32 i_rate, s16 i_start, s16 param_6);
     void entry(J3DMaterialTable* i_matTable, f32 i_frame);
+#if TARGET_PC
+    int play();
+#endif
 
     void entry(J3DModelData* i_modelData) { entry(i_modelData, getFrame()); }
     void entry(J3DModelData* i_modelData, f32 i_frame) {
@@ -80,7 +83,11 @@ public:
 
     int remove(J3DModelData* i_modelData) { return i_modelData->removeTexMtxAnimator(mpAnm); }
     void entryFrame() { entryFrame(getFrame()); }
+#if TARGET_PC
+    void entryFrame(f32 frame);
+#else
     void entryFrame(f32 frame) { mpAnm->setFrame(frame); }
+#endif
 
     J3DAnmTextureSRTKey* getBtkAnm() const { return mpAnm; }
 
@@ -110,7 +117,12 @@ public:
 
     int remove(J3DModelData* i_modelData) { return i_modelData->removeTevRegAnimator(mpAnm); }
     void entryFrame() { entryFrame(getFrame()); }
+#if TARGET_PC
+    int play();
+    void entryFrame(f32 frame);
+#else
     void entryFrame(f32 frame) { mpAnm->setFrame(frame); }
+#endif
 
     J3DAnmTevRegKey* getBrkAnm() const { return mpAnm; }
 
@@ -139,6 +151,12 @@ public:
     }
 
     int remove(J3DModelData* i_modelData) { return i_modelData->removeMatColorAnimator(mpAnm); }
+#if TARGET_PC
+    int play();
+    void entryFrame() { entryFrame(getFrame()); }
+    void entryFrame(f32 frame);
+#endif
+
     J3DAnmColor* getBpkAnm() { return mpAnm; }
 
 private:
