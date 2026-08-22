@@ -8,7 +8,7 @@
 #include "JSystem/JParticle/JPAExtraShape.h"
 
 #if TARGET_PC
-#include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/particle.h"
 #endif
 
 JPAParticleCallBack::~JPAParticleCallBack() {
@@ -206,30 +206,11 @@ void JPABaseParticle::init_c(JPAEmitterWorkData* work, JPABaseParticle* parent) 
     }
 
     mTexAnmIdx = 0;
+    IF_DUSK(dusk::interp::particle::capture(this, work, parent));
 }
-
-#if TARGET_PC
-void JPABaseParticle::interp(JPAEmitterWorkData* work, void const* drawFunc) {
-    if (!dusk::interp::is_enabled())
-        return;
-
-    // don't interpolate the first frame
-    if (mAge == 0)
-        return;
-
-    if (drawFunc == JPADrawBillboard) {
-        JPAInterpBillboard(work, this);
-    } else if (drawFunc == JPADrawRotBillboard) {
-        JPAInterpRotBillboard(work, this);
-    } else if (drawFunc == JPADrawDirection) {
-        JPAInterpDirection(work, this);
-    } else if (drawFunc == JPADrawRotDirection) {
-        JPAInterpRotDirection(work, this);
-    }
-}
-#endif
 
 bool JPABaseParticle::calc_p(JPAEmitterWorkData* work) {
+    IF_DUSK(dusk::interp::particle::capture(this, work));
     if (++mAge >= mLifeTime) {
         return true;
     }
@@ -272,21 +253,13 @@ bool JPABaseParticle::calc_p(JPAEmitterWorkData* work) {
                   mOffsetPosition.y + mLocalPosition.y * work->mPublicScale.y,
                   mOffsetPosition.z + mLocalPosition.z * work->mPublicScale.z);
 
-#if TARGET_PC
-    JPABaseShape* pBsp = work->mpRes->getBsp();
-    work->mGlobalPtclScl.x = work->mpEmtr->mGlobalPScl.x * pBsp->getBaseSizeX();
-    work->mGlobalPtclScl.y = work->mpEmtr->mGlobalPScl.y * pBsp->getBaseSizeY();
-    work->mDirType = pBsp->getDirType();
-    work->mRotType = pBsp->getRotType();
-    work->mDLType = pBsp->getType() == 4 || pBsp->getType() == 8;
-    work->mPlaneType = work->mDLType ? 2 : pBsp->getBasePlaneType();
-    interp(work, (void const*)work->mpRes->mpDrawParticleFuncList[0]);
-#endif
+    IF_DUSK(dusk::interp::particle::capture(this, work));
 
     return false;
 }
 
 bool JPABaseParticle::calc_c(JPAEmitterWorkData* work) {
+    IF_DUSK(dusk::interp::particle::capture(this, work));
     if (++mAge >= mLifeTime) {
         return true;
     }
@@ -325,22 +298,7 @@ bool JPABaseParticle::calc_c(JPAEmitterWorkData* work) {
                   mOffsetPosition.y + mLocalPosition.y * work->mPublicScale.y,
                   mOffsetPosition.z + mLocalPosition.z * work->mPublicScale.z);
 
-#if TARGET_PC
-    JPABaseShape* pBsp = work->mpRes->getBsp();
-    JPAChildShape* pCsp = work->mpRes->getCsp();
-    if (pCsp->isScaleInherited()) {
-        work->mGlobalPtclScl.x = work->mpEmtr->mGlobalPScl.x * pBsp->getBaseSizeX();
-        work->mGlobalPtclScl.y = work->mpEmtr->mGlobalPScl.y * pBsp->getBaseSizeY();
-    } else {
-        work->mGlobalPtclScl.x = work->mpEmtr->mGlobalPScl.x * pCsp->getScaleX();
-        work->mGlobalPtclScl.y = work->mpEmtr->mGlobalPScl.y * pCsp->getScaleY();
-    }
-    work->mDirType = pCsp->getDirType();
-    work->mRotType = pCsp->getRotType();
-    work->mDLType = pCsp->getType() == 4 || pCsp->getType() == 8;
-    work->mPlaneType = work->mDLType ? 2 : pCsp->getBasePlaneType();
-    interp(work, (void const*)work->mpRes->mpDrawParticleChildFuncList[0]);
-#endif
+    IF_DUSK(dusk::interp::particle::capture(this, work));
 
     return false;
 }

@@ -4,6 +4,7 @@
 #include "dusk/interp/dual_buffer.h"
 #include "dusk/interp/material.h"
 #include "dusk/interp/matrix.h"
+#include "dusk/interp/particle.h"
 #include "dusk/interp/skeleton.h"
 
 #include "JSystem/J3DGraphAnimator/J3DModel.h"
@@ -137,6 +138,7 @@ void clear_interpolation_history() {
     dusk::interp::clear_weather_buffers();
     clear_callbacks();
     dusk::interp::clear_camera();
+    dusk::interp::particle::clear();
     dusk::interp::skeleton::clear();
     s_presentationDepth = 0;
 }
@@ -191,6 +193,7 @@ void begin_record() {
     s_replacementsActive = false;
     clear_replacements();
     camera_on_begin_record();
+    particle::begin_record();
 }
 
 void end_record() {
@@ -198,6 +201,7 @@ void end_record() {
     for (auto& entry : s_currentRecording.matrix_values) {
         dusk::interp::matrix::finalize(&entry.second);
     }
+    particle::end_record();
 }
 
 void request_presentation_sync() {
@@ -281,6 +285,7 @@ void begin_presentation(float step) {
 
     dusk::interp::material::apply_presentation_frames();
     interpolate_replacements();
+    particle::apply_presentation();
 
     if (s_presentationDepth > 0) {
         s_presentationDepth++;

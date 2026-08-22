@@ -16,6 +16,7 @@
 
 #if TARGET_PC
 #include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/particle.h"
 
 #include <tracy/Tracy.hpp>
 
@@ -847,15 +848,19 @@ bool JPAResource::calc(JPAEmitterWorkData* work, JPABaseEmitter* emtr) {
 #endif
 
         JPANode<JPABaseParticle>* next = NULL;
+        IF_DUSK(work->mpAlivePtcl = &emtr->mAlivePtclBase);
         for (JPANode<JPABaseParticle>* node = emtr->mAlivePtclBase.getFirst(); node != emtr->mAlivePtclBase.getEnd(); node = next) {
             next = node->getNext();
+            IF_DUSK(work->mpCurNode = node);
             if (node->getObject()->calc_p(work)) {
                 emtr->mpPtclPool->push_front(emtr->mAlivePtclBase.erase(node));
             }
         }
 
+        IF_DUSK(work->mpAlivePtcl = &emtr->mAlivePtclChld);
         for (JPANode<JPABaseParticle>* node = emtr->mAlivePtclChld.getFirst(); node != emtr->mAlivePtclChld.getEnd(); node = next) {
             next = node->getNext();
+            IF_DUSK(work->mpCurNode = node);
             if (node->getObject()->calc_c(work)) {
                 emtr->mpPtclPool->push_front(emtr->mAlivePtclChld.erase(node));
             }
@@ -1049,8 +1054,11 @@ static bool draw_particle_batch(JPAEmitterWorkData* work) {
     GXBegin(GX_QUADS, GX_VTXFMT1, GX_AUTO);
     while (node != work->mpEmtr->mAlivePtclBase.getEnd()) {
         work->mpCurNode = node;
+        JPABaseParticle scratch;
+        JPABaseParticle* ptcl = dusk::interp::particle::present_for_draw(node->getObject(), &scratch);
         for (int i = res->mpDrawParticleFuncListNum - 1; i >= 0; i--) {
-            (*res->mpDrawParticleFuncList[i])(work, node->getObject(), &ctx);
+            (*res->mpDrawParticleFuncList[i])(
+                work, ptcl, &ctx);
         }
         node = fwdAhead ? node->getPrev() : node->getNext();
     }
@@ -1112,8 +1120,13 @@ void JPAResource::drawP(JPAEmitterWorkData* work) {
         for (; node != work->mpEmtr->mAlivePtclBase.getEnd(); node = node->getPrev()) {
             work->mpCurNode = node;
             if (mpDrawParticleFuncList != NULL) {
+#if TARGET_PC
+                JPABaseParticle scratch;
+                JPABaseParticle* ptcl = dusk::interp::particle::present_for_draw(node->getObject(), &scratch);
+#endif
                 for (int i = mpDrawParticleFuncListNum - 1; i >= 0; i--) {
-                    (*mpDrawParticleFuncList[i])(work, node->getObject() JPA_DRAW_CTX_ARG);
+                    (*mpDrawParticleFuncList[i])(
+                        work, DUSK_IF_ELSE(ptcl, node->getObject()) JPA_DRAW_CTX_ARG);
                 }
             }
         }
@@ -1122,8 +1135,13 @@ void JPAResource::drawP(JPAEmitterWorkData* work) {
         for (; node != work->mpEmtr->mAlivePtclBase.getEnd(); node = node->getNext()) {
             work->mpCurNode = node;
             if (mpDrawParticleFuncList != NULL) {
+#if TARGET_PC
+                JPABaseParticle scratch;
+                JPABaseParticle* ptcl = dusk::interp::particle::present_for_draw(node->getObject(), &scratch);
+#endif
                 for (int i = mpDrawParticleFuncListNum - 1; i >= 0; i--) {
-                    (*mpDrawParticleFuncList[i])(work, node->getObject() JPA_DRAW_CTX_ARG);
+                    (*mpDrawParticleFuncList[i])(
+                        work, DUSK_IF_ELSE(ptcl, node->getObject()) JPA_DRAW_CTX_ARG);
                 }
             }
         }
@@ -1179,8 +1197,13 @@ void JPAResource::drawC(JPAEmitterWorkData* work) {
         for (; node != work->mpEmtr->mAlivePtclChld.getEnd(); node = node->getPrev()) {
             work->mpCurNode = node;
             if (mpDrawParticleChildFuncList != NULL) {
+#if TARGET_PC
+                JPABaseParticle scratch;
+                JPABaseParticle* ptcl = dusk::interp::particle::present_for_draw(node->getObject(), &scratch);
+#endif
                 for (int i = mpDrawParticleChildFuncListNum - 1; i >= 0; i--) {
-                    (*mpDrawParticleChildFuncList[i])(work, node->getObject() JPA_DRAW_CTX_ARG);
+                    (*mpDrawParticleChildFuncList[i])(
+                        work, DUSK_IF_ELSE(ptcl, node->getObject()) JPA_DRAW_CTX_ARG);
                 }
             }
         }
@@ -1189,8 +1212,13 @@ void JPAResource::drawC(JPAEmitterWorkData* work) {
         for (; node != work->mpEmtr->mAlivePtclChld.getEnd(); node = node->getNext()) {
             work->mpCurNode = node;
             if (mpDrawParticleChildFuncList != NULL) {
+#if TARGET_PC
+                JPABaseParticle scratch;
+                JPABaseParticle* ptcl = dusk::interp::particle::present_for_draw(node->getObject(), &scratch);
+#endif
                 for (int i = mpDrawParticleChildFuncListNum - 1; i >= 0; i--) {
-                    (*mpDrawParticleChildFuncList[i])(work, node->getObject() JPA_DRAW_CTX_ARG);
+                    (*mpDrawParticleChildFuncList[i])(
+                        work, DUSK_IF_ELSE(ptcl, node->getObject()) JPA_DRAW_CTX_ARG);
                 }
             }
         }

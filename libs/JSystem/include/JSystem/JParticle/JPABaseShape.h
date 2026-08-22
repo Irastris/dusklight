@@ -4,6 +4,7 @@
 #include <gx.h>
 
 #if TARGET_PC
+#include "JSystem/JGeometry.h"
 #include <mtx.h>
 
 struct ParticleDrawCtx {
@@ -233,10 +234,8 @@ void JPARegistPrmAlphaEnv(JPA_DRAW_PARTICLE_ARGS);
 #undef JPA_DRAW_PARTICLE_ARGS
 
 #if TARGET_PC
-void JPAInterpBillboard(JPAEmitterWorkData*, JPABaseParticle*);
-void JPAInterpRotBillboard(JPAEmitterWorkData*, JPABaseParticle*);
-void JPAInterpDirection(JPAEmitterWorkData*, JPABaseParticle*);
-void JPAInterpRotDirection(JPAEmitterWorkData*, JPABaseParticle*);
+void JPAGetParticleDir(JPAEmitterWorkData const* work, JPABaseParticle const* ptcl,
+                       JGeometry::TVec3<f32>* out);
 #endif
 
 #endif /* JPABASESHAPE_H */
