@@ -19,7 +19,9 @@
 #include <cstring>
 
 #if TARGET_PC
+#include "d/d_meter2.h"
 #include "dusk/action_bindings.h"
+#include "dusk/game_clock.h"
 #include "dusk/interp/vdt.h"
 #include "dusk/settings.h"
 #include <algorithm>
@@ -630,6 +632,13 @@ void dMeterMap_c::_draw() {
 }
 
 void dMeterMap_c::draw() {
+#if TARGET_PC
+    if (dusk::game_clock::is_presentation_frame()) {
+        if (dMeter2_c* meter = dMeter2Info_getMeterClass()) {
+            meter->presentMap();
+        }
+    }
+#endif
     if (
         #if DEBUG
         !g_meter_mapHIO.mMapDisplayProhibited &&

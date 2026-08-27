@@ -11,6 +11,7 @@ class JKRExpHeap;
 class JKRHeap;
 
 class dKantera_icon_c;
+class dMeterMap_c;
 
 class dMeter2Draw_c : public dDlst_base_c {
 public:
@@ -134,7 +135,11 @@ public:
 
     J2DScreen* getMainScreenPtr() { return mpScreen; }
     bool isEmphasisC() { return field_0x766 == 7 ? true : false; }
+#if TARGET_PC
+    f32 getMeterGaugeAlphaRate(u8 i_no);
+#else
     f32 getMeterGaugeAlphaRate(u8 i_no) { return mMeterAlphaRate[i_no]; }
+#endif
     bool isEmphasisA() { return field_0x761 == 7 ? true : false; }
     bool isEmphasisB() { return field_0x762 == 7 ? true : false; }
     bool isEmphasisBin() { return field_0x763 == 7 ? true : false; }
@@ -152,6 +157,28 @@ public:
     constexpr f32 getButtonZAlpha() const {
         return mButtonZAlpha;
     }
+
+    void beginExecution();
+    void endExecution();
+    bool isExecuting() const { return mExecuting; }
+    void setExecuting(bool executing) { mExecuting = executing; }
+
+    void publishKantera(s32 now, s32 max);
+    void publishOxygen(s32 now, s32 max);
+
+    void present();
+    void presentVessel(f32 i_posX, f32 i_posY, f32 i_scale);
+    void presentButtonA(f32 i_posX, f32 i_posY, f32 i_textPosX, f32 i_textPosY, f32 i_scale);
+    void presentButtonB(f32 i_posX, f32 i_posY, f32 i_textPosX, f32 i_textPosY, f32 i_scale);
+    void presentButtonCross(f32 i_posX, f32 i_posY);
+    void presentMapAlpha(dMeterMap_c* map);
+
+    void showLightDrop(bool show, bool get_path = false);
+    void showCross(bool show);
+    void showMap(bool show);
+
+    bool lightDropRowUsed() const;
+    void resetRows();
 #endif
 
     /* 0x004 */ item_params mItemParams[4];
@@ -284,7 +311,7 @@ public:
     /* 0x742 */ s16 field_0x742[3];
     /* 0x748 */ u8 field_0x748[0xC];
     /* 0x756 */ u16 field_0x754;
-    /* 0x756 */ s16 field_0x756;
+    /* 0x756 */ DUSK_IF_ELSE(f32, s16) field_0x756;
     /* 0x758 */ u8 field_0x758;
     /* 0x759 */ u8 field_0x759;
     /* 0x75A */ u8 field_0x75a;
@@ -363,6 +390,9 @@ public:
     /* 0x858 */ GXColor mButtonZTextColor;
     /* 0x85C */ GXColor mButtonXYTextColor;
     /* 0x860 */ u8 field_0x860[2];
+#if TARGET_PC
+    bool mExecuting;
+#endif
 };
 
 #endif /* D_METER_D_METER2_DRAW_H */

@@ -23,14 +23,24 @@
 #include <cstring>
 
 #if TARGET_PC
+#include "dusk/game_clock.h"
 #include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/pane.h"
+#include "dusk/interp/vdt.h"
 #include "dusk/settings.h"
 #include "dusk/ui/icon_provider.hpp"
 #include "dusk/version.hpp"
 
+#include "d/d_meter2.h"
+
 #include <algorithm>
 
 namespace {
+f32 s_button_a_scale = 1.0f;
+f32 s_button_a_text_scale = 1.0f;
+int s_button_b_kind;
+f32 s_button_b_scale = 1.0f;
+f32 s_button_b_text_scale = 1.0f;
 
 // Reads the user HUD scale setting, clamped to a safe range.
 f32 dGetUserHudScale() {
@@ -56,12 +66,14 @@ void dAnchorHudScale(CPaneMgr* i_pane, HudCorner i_corner, f32* io_x, f32* io_y,
     *io_x += dirX * i_pane->getInitSizeX() * half * i_pull;
     *io_y += dirY * i_pane->getInitSizeY() * half;
 }
-
 }  // namespace
+
+#include "d_meter2_draw_vdt.inc"
 #endif
 
 dMeter2Draw_c::dMeter2Draw_c(JKRExpHeap* mp_heap) {
 #if TARGET_PC
+    setExecuting(false);
     // correct hio data here because we can't do runtime disc checks in sinit data constructors
     if (dusk::version::isRegionJpn()) {
         g_drawHIO.mButtonATextSpacing = -2.0f;
@@ -607,6 +619,7 @@ void dMeter2Draw_c::init() {
     initButton();
     initButtonCross();
     field_0x772 = 0;
+    IF_DUSK(resetRows());
 }
 
 void dMeter2Draw_c::exec(u32 i_status) {
@@ -691,6 +704,14 @@ void dMeter2Draw_c::exec(u32 i_status) {
 }
 
 void dMeter2Draw_c::draw() {
+#if TARGET_PC
+    if (dusk::game_clock::is_presentation_frame()) {
+        if (dMeter2_c* meter = dMeter2Info_getMeterClass()) {
+            meter->presentAnims();
+        }
+    }
+#endif
+
     J2DGrafContext* graf_ctx = dComIfGp_getCurrentGrafPort();
     graf_ctx->setup2D();
 
@@ -707,16 +728,12 @@ void dMeter2Draw_c::draw() {
     drawKanteraScreen(1);
     drawKanteraScreen(2);
 
-#if TARGET_PC
-    if (!touchControlsEnabled) {
-#endif
+    IF_DUSK_BLOCK(!touchControlsEnabled)
     for (int i = 0; i < 2; i++) {
         if (mpItemXY[i] != NULL) {
             for (int j = 0; j < 3; j++) {
                 f32 temp_f30 = mItemParams[i].num_scale * 16.0f;
-#if TARGET_PC
-                temp_f30 *= dGetUserHudScale();
-#endif
+                IF_DUSK(temp_f30 *= dGetUserHudScale());
 
                 Vec vtx0 = mpItemXY[i]->getPanePtr()->getGlbVtx(0);
                 Vec vtx3 = mpItemXY[i]->getPanePtr()->getGlbVtx(3);
@@ -758,9 +775,7 @@ void dMeter2Draw_c::draw() {
             }
         }
     }
-#if TARGET_PC
-    }
-#endif
+    IF_DUSK_BLOCK_END
 
     if (mpLightDropParent->getAlphaRate() != 0.0f) {
         f32 var_f28 = g_drawHIO.mLightDrop.mPikariScaleNormal;
@@ -769,40 +784,33 @@ void dMeter2Draw_c::draw() {
         if (field_0x756 >= 0) {
             var_f29 = g_drawHIO.mLightDrop.mDropPikariAnimSpeed_Completed;
             int temp_r5_2 = g_drawHIO.mLightDrop.mPikariInterval * 15;
-#ifdef TARGET_PC
-            // FRAME INTERP NOTE: Set even if not advancing
-            var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete;
-            if (dusk::interp::get_ui_tick_pending())
-#endif
-            {
-                if (field_0x756 <= temp_r5_2) {
-                    int temp_r4 = (field_0x756 % g_drawHIO.mLightDrop.mPikariInterval);
-                    int temp_r3_5 = field_0x756 / g_drawHIO.mLightDrop.mPikariInterval;
+            if (field_0x756 <= temp_r5_2) {
+                int temp_r4 = ((int)field_0x756 % g_drawHIO.mLightDrop.mPikariInterval);
+                int temp_r3_5 = (int)field_0x756 / g_drawHIO.mLightDrop.mPikariInterval;
 
-                    if (temp_r4 == 0 && field_0x62c[temp_r3_5] == 0.0f) {
-                        field_0x62c[temp_r3_5] = 18.0f;
+                if (temp_r4 == 0 && field_0x62c[temp_r3_5] == 0.0f) {
+                    field_0x62c[temp_r3_5] = 18.0f;
+                }
+
+                var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete;
+                DUSK_IF_ELSE(field_0x756 += dusk::game_clock::original_frames(), field_0x756++);
+            } else {
+                int temp_r5_3 = temp_r5_2 + 1;
+
+                if (field_0x756 DUSK_IF_ELSE(< temp_r5_3 + 1, == temp_r5_3)) {
+                    if (field_0x62c[15] == 0.0f) {
+                        DUSK_IF_ELSE(field_0x756 += dusk::game_clock::original_frames(), field_0x756++);
                     }
-
                     var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete;
-                    field_0x756++;
-                } else {
-                    int temp_r5_3 = temp_r5_2 + 1;
-
-                    if (field_0x756 == temp_r5_3) {
-                        if (field_0x62c[15] == 0.0f) {
-                            field_0x756++;
-                        }
-                        var_f28 = g_drawHIO.mLightDrop.mPikariScaleComplete;
-                    } else if (field_0x756 >= g_drawHIO.mLightDrop.field_0x54 + temp_r5_3) {
-                        for (int i = 0; i < 16; i++) {
-                            field_0x62c[i] = 18.0f - var_f29;
-                            field_0x66c[i] = 18.0f - g_drawHIO.mLightDrop.mPikariLoopAnimSpeed;
-                        }
-
-                        field_0x756 = -1;
-                    } else {
-                        field_0x756++;
+                } else if (field_0x756 >= g_drawHIO.mLightDrop.field_0x54 + temp_r5_3) {
+                    for (int i = 0; i < 16; i++) {
+                        field_0x62c[i] = 18.0f - var_f29;
+                        field_0x66c[i] = 18.0f - g_drawHIO.mLightDrop.mPikariLoopAnimSpeed;
                     }
+
+                    field_0x756 = -1;
+                } else {
+                    DUSK_IF_ELSE(field_0x756 += dusk::game_clock::original_frames(), field_0x756++);
                 }
             }
         }
@@ -988,8 +996,7 @@ void dMeter2Draw_c::initMagic() {
               g_drawHIO.mMagicMeterPosY + offsetY);
     setAlphaMagicChange(true);
 
-    drawKantera(dComIfGs_getMaxOil(), dComIfGs_getOil(), g_drawHIO.mLanternMeterPosX + offsetX,
-                g_drawHIO.mNoMagicPosY + (g_drawHIO.mLanternMeterPosY + offsetY));
+    IF_NOT_DUSK(drawKantera(dComIfGs_getMaxOil(), dComIfGs_getOil(), g_drawHIO.mLanternMeterPosX + offsetX, g_drawHIO.mNoMagicPosY + (g_drawHIO.mLanternMeterPosY + offsetY)));
     setAlphaKanteraChange(true);
 }
 
@@ -1494,24 +1501,26 @@ void dMeter2Draw_c::drawPikari(f32 i_posX, f32 i_posY, f32* i_framep, f32 i_scal
     if (param_9 != 3 && param_9 != 4 && param_9 != 5 && dMsgObject_isTalkNowCheck()) {
         *i_framep = 0.0f;
     } else {
-#ifdef TARGET_PC
-        if (dusk::interp::get_ui_tick_pending())
-#endif
-        {
-            *i_framep += param_8;
-            if (*i_framep > var_f31) {
-                if (param_9 == 1 || param_9 == 2 || param_9 == 3) {
-                    *i_framep = 18.0f;
-                } else {
-                    *i_framep = 0.0f;
-                }
+        IF_DUSK(f32 const prev = *i_framep);
+        *i_framep += param_8 IF_DUSK(* dusk::game_clock::original_frames());
+        if (*i_framep > var_f31) {
+            if (param_9 == 1 || param_9 == 2 || param_9 == 3) {
+                *i_framep = 18.0f;
+            } else {
+                *i_framep = 0.0f;
             }
+        }
 
-            if (*i_framep == 18.0f && param_9 == 1) {
-                mDoAud_seStart(Z2SE_NAVI_BLINK, NULL, 0, 0);
-            } else if (*i_framep == 18.0f && param_9 == 2) {
-                mDoAud_seStart(Z2SE_SY_ITEM_COMBINE_ICON, NULL, 0, 0);
-            }
+#if TARGET_PC
+        if (prev < 18.0f && *i_framep > 18.0f) {
+            *i_framep = 18.0f;
+        }
+#endif
+
+        if (*i_framep == 18.0f && param_9 == 1) {
+            mDoAud_seStart(Z2SE_NAVI_BLINK, NULL, 0, 0);
+        } else if (*i_framep == 18.0f && param_9 == 2) {
+            mDoAud_seStart(Z2SE_SY_ITEM_COMBINE_ICON, NULL, 0, 0);
         }
 
         playPikariBckAnimation(*i_framep);
@@ -1658,6 +1667,7 @@ void dMeter2Draw_c::drawLife(s16 i_maxLife, s16 i_life, f32 i_posX, f32 i_posY) 
 }
 
 void dMeter2Draw_c::setAlphaLifeChange(bool param_0) {
+    IF_DUSK_BLOCK(!isExecuting())
     bool var_r31 = false;
     bool var_r30 = false;
     bool var_r29 = false;
@@ -1703,20 +1713,29 @@ void dMeter2Draw_c::setAlphaLifeChange(bool param_0) {
     if (var_r31 || var_r28 || param_0) {
         mpBigHeart->setAlphaRate(mBigHeartAlpha * mLifeParentAlpha);
     }
+    IF_DUSK_BLOCK_END
 }
 
 void dMeter2Draw_c::setAlphaLifeAnimeMin() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowLife, false);
+#else
     if (mpLifeParent->getAlphaRate() != 0.0f) {
         mpLifeParent->setAlphaRate(g_drawHIO.mParentAlpha);
         setAlphaAnimeMin(mpLifeParent, 5);
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaLifeAnimeMax() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowLife, true);
+#else
     if (mpLifeParent->getAlphaRate() != g_drawHIO.mParentAlpha) {
         mpLifeParent->setAlphaRate(g_drawHIO.mParentAlpha);
         setAlphaAnimeMax(mpLifeParent, 5);
     }
+#endif
 }
 
 void dMeter2Draw_c::drawKanteraScreen(u8 i_meterType) {
@@ -1865,6 +1884,7 @@ void dMeter2Draw_c::drawKantera(s32 i_max, s32 i_oil, f32 i_posX, f32 i_posY) {
 }
 
 void dMeter2Draw_c::setAlphaKanteraChange(bool i_forceSet) {
+    IF_DUSK_BLOCK(!isExecuting())
     bool meter_parent_alpha_set = false;
     bool meter_alpha_set = false;
     bool meter_frame_alpha_set = false;
@@ -1892,9 +1912,13 @@ void dMeter2Draw_c::setAlphaKanteraChange(bool i_forceSet) {
         mpMagicFrameL->setAlphaRate(mLanternMeterFrameAlpha * field_0x7b0);
         mpMagicFrameR->setAlphaRate(mLanternMeterFrameAlpha * field_0x7b0);
     }
+    IF_DUSK_BLOCK_END
 }
 
 void dMeter2Draw_c::setAlphaKanteraAnimeMin() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowKantera, false);
+#else
     if (field_0x742[1] <= 0) {
         mMeterAlphaRate[1] = 0.0f;
     } else {
@@ -1905,9 +1929,13 @@ void dMeter2Draw_c::setAlphaKanteraAnimeMin() {
 
         mMeterAlphaRate[1] = (field_0x742[1] / 5.0f) * g_drawHIO.mParentAlpha;
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaKanteraAnimeMax() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowKantera, true);
+#else
     if (field_0x742[1] >= 5) {
         mMeterAlphaRate[1] = g_drawHIO.mParentAlpha;
     } else {
@@ -1918,6 +1946,7 @@ void dMeter2Draw_c::setAlphaKanteraAnimeMax() {
 
         mMeterAlphaRate[1] = (field_0x742[1] / 5.0f) * g_drawHIO.mParentAlpha;
     }
+#endif
 }
 
 void dMeter2Draw_c::drawOxygen(s32 i_max, s32 i_oxygen, f32 i_posX, f32 i_posY) {
@@ -1943,6 +1972,7 @@ void dMeter2Draw_c::drawOxygen(s32 i_max, s32 i_oxygen, f32 i_posX, f32 i_posY) 
 }
 
 void dMeter2Draw_c::setAlphaOxygenChange(bool i_forceSet) {
+    IF_DUSK_BLOCK(!isExecuting())
     bool meter_parent_alpha_set = false;
     bool meter_alpha_set = false;
     bool meter_frame_alpha_set = false;
@@ -1970,9 +2000,13 @@ void dMeter2Draw_c::setAlphaOxygenChange(bool i_forceSet) {
         mpMagicFrameL->setAlphaRate(mOxygenMeterFrameAlpha * field_0x7bc);
         mpMagicFrameR->setAlphaRate(mOxygenMeterFrameAlpha * field_0x7bc);
     }
+    IF_DUSK_BLOCK_END
 }
 
 void dMeter2Draw_c::setAlphaOxygenAnimeMin() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowOxygen, false);
+#else
     if (field_0x742[2] <= 0) {
         mMeterAlphaRate[2] = 0.0f;
     } else {
@@ -1983,9 +2017,13 @@ void dMeter2Draw_c::setAlphaOxygenAnimeMin() {
 
         mMeterAlphaRate[2] = (field_0x742[2] / 5.0f) * g_drawHIO.mParentAlpha;
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaOxygenAnimeMax() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowOxygen, true);
+#else
     if (field_0x742[2] >= 5) {
         mMeterAlphaRate[2] = g_drawHIO.mParentAlpha;
     } else {
@@ -1996,6 +2034,7 @@ void dMeter2Draw_c::setAlphaOxygenAnimeMax() {
 
         mMeterAlphaRate[2] = (field_0x742[2] / 5.0f) * g_drawHIO.mParentAlpha;
     }
+#endif
 }
 
 void dMeter2Draw_c::drawLightDrop(u8 i_num, u8 i_needNum, f32 i_posX, f32 i_posY, f32 i_vesselScale,
@@ -2044,18 +2083,22 @@ void dMeter2Draw_c::drawLightDrop(u8 i_num, u8 i_needNum, f32 i_posX, f32 i_posY
         }
     }
 
+#if TARGET_PC
+    if (!isExecuting()) {
+        field_0x6fc = param_5;
+        mLightDropVesselScale = i_vesselScale;
+        const f32 lightDropUserScale = dGetUserHudScale();
+        const f32 lightDropScale = mLightDropVesselScale * field_0x6f8 * lightDropUserScale;
+        mpLightDropParent->scale(lightDropScale, lightDropScale);
+
+        f32 lightDropPosX = i_posX;
+        f32 lightDropPosY = i_posY;
+        dAnchorHudScale(mpLightDropParent, HudCorner::TopRight, &lightDropPosX, &lightDropPosY);
+        mpLightDropParent->paneTrans(lightDropPosX, lightDropPosY);
+    }
+#else
     field_0x6fc = param_5;
     mLightDropVesselScale = i_vesselScale;
-#if TARGET_PC
-    const f32 lightDropUserScale = dGetUserHudScale();
-    const f32 lightDropScale = mLightDropVesselScale * field_0x6f8 * lightDropUserScale;
-    mpLightDropParent->scale(lightDropScale, lightDropScale);
-
-    f32 lightDropPosX = i_posX;
-    f32 lightDropPosY = i_posY;
-    dAnchorHudScale(mpLightDropParent, HudCorner::TopRight, &lightDropPosX, &lightDropPosY);
-    mpLightDropParent->paneTrans(lightDropPosX, lightDropPosY);
-#else
     mpLightDropParent->scale(mLightDropVesselScale * field_0x6f8,
                              mLightDropVesselScale * field_0x6f8);
 
@@ -2082,6 +2125,9 @@ f32 dMeter2Draw_c::getNowLightDropRateCalc() {
 }
 
 void dMeter2Draw_c::setAlphaLightDropAnimeMin() {
+#if TARGET_PC
+    showLightDrop(false);
+#else
     if (mpLightDropParent->getAlphaRate() != 0.0f) {
         mpLightDropParent->setAlphaRate(g_drawHIO.mParentAlpha * field_0x6fc);
         setAlphaAnimeMin(mpLightDropParent, 5);
@@ -2101,14 +2147,19 @@ void dMeter2Draw_c::setAlphaLightDropAnimeMin() {
             }
         }
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaLightDropAnimeMax() {
+    const bool dropGetPath = dMeter2Info_getLightDropGetFlag(dComIfGp_getStartStageDarkArea()) > 1 &&
+                             dMeter2Info_getLightDropGetFlag(dComIfGp_getStartStageDarkArea()) != 0xFF;
+
+#if TARGET_PC
+    showLightDrop(true, dropGetPath);
+#else
     f32 temp_f31 = g_drawHIO.mParentAlpha * field_0x6fc;
 
-    if (dMeter2Info_getLightDropGetFlag(dComIfGp_getStartStageDarkArea()) > 1 &&
-        dMeter2Info_getLightDropGetFlag(dComIfGp_getStartStageDarkArea()) != 0xFF)
-    {
+    if (dropGetPath) {
         if (mpLightDropParent->getAlphaTimer() == 0) {
             Z2GetAudioMgr()->seStart(Z2SE_SY_LIGHT_POT_EQUIP, NULL, 0, 0, 1.0f, 1.0f, -1.0f, -1.0f,
                                      0);
@@ -2132,14 +2183,6 @@ void dMeter2Draw_c::setAlphaLightDropAnimeMax() {
         } else {
             field_0x6f8 = 1.0f;
         }
-
-#if TARGET_PC
-        const f32 dropAnimScale = mLightDropVesselScale * field_0x6f8 * dGetUserHudScale();
-        mpLightDropParent->scale(dropAnimScale, dropAnimScale);
-#else
-        mpLightDropParent->scale(mLightDropVesselScale * field_0x6f8,
-                                 mLightDropVesselScale * field_0x6f8);
-#endif
 
         if (g_drawHIO.mLightDrop.mDropGetScaleAnimFrameNum == mpLightDropParent->getAlphaTimer()) {
             dMeter2Info_setLightDropGetFlag(dComIfGp_getStartStageDarkArea(), 0xFF);
@@ -2171,6 +2214,7 @@ void dMeter2Draw_c::setAlphaLightDropAnimeMax() {
             mpSIParts[i][2]->setAlphaRate(mpSIParent[1]->getAlphaRate() * 0.3f);
         }
     }
+#endif
 }
 
 void dMeter2Draw_c::drawRupee(s16 i_rupeeNum) {
@@ -2245,6 +2289,7 @@ void dMeter2Draw_c::drawRupee(s16 i_rupeeNum) {
 }
 
 void dMeter2Draw_c::setAlphaRupeeChange(bool param_0) {
+    IF_DUSK_BLOCK(!isExecuting())
     bool set_parent = false;
     bool set_rupeekey = false;
     bool set_rupee = false;
@@ -2297,9 +2342,13 @@ void dMeter2Draw_c::setAlphaRupeeChange(bool param_0) {
             }
         }
     }
+    IF_DUSK_BLOCK_END
 }
 
 void dMeter2Draw_c::setAlphaRupeeAnimeMin() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowRupee, false);
+#else
     f32 alphas[3];
     alphas[0] = g_drawHIO.mRupeeAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mRupeeKeyAlpha);
     alphas[1] = g_drawHIO.mRupeeFrameAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mRupeeKeyAlpha);
@@ -2311,9 +2360,13 @@ void dMeter2Draw_c::setAlphaRupeeAnimeMin() {
             setAlphaAnimeMin(mpRupeeParent[i], 5);
         }
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaRupeeAnimeMax() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowRupee, true);
+#else
     f32 alphas[3];
     alphas[0] = g_drawHIO.mRupeeAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mRupeeKeyAlpha);
     alphas[1] = g_drawHIO.mRupeeFrameAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mRupeeKeyAlpha);
@@ -2325,6 +2378,7 @@ void dMeter2Draw_c::setAlphaRupeeAnimeMax() {
             setAlphaAnimeMax(mpRupeeParent[i], 5);
         }
     }
+#endif
 }
 
 void dMeter2Draw_c::drawKey(s16 i_keyNum) {
@@ -2359,6 +2413,7 @@ void dMeter2Draw_c::drawKey(s16 i_keyNum) {
 }
 
 void dMeter2Draw_c::setAlphaKeyChange(bool param_0) {
+    IF_DUSK_BLOCK(!isExecuting())
     bool set_parent = false;
     bool set_rupeekey = false;
     bool set_key = false;
@@ -2393,24 +2448,33 @@ void dMeter2Draw_c::setAlphaKeyChange(bool param_0) {
             mpKeyTexture[i]->setAlphaRate(field_0x7e0 * (field_0x7e4 * (mKeyNumAlpha * mKeyAlpha)));
         }
     }
+    IF_DUSK_BLOCK_END
 }
 
 void dMeter2Draw_c::setAlphaKeyAnimeMin() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowKey, false);
+#else
     f32 alpha = g_drawHIO.mKeyAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mRupeeKeyAlpha);
 
     if (mpKeyParent->getAlphaRate() != 0.0f) {
         mpKeyParent->setAlphaRate(alpha);
         setAlphaAnimeMin(mpKeyParent, 5);
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaKeyAnimeMax() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowKey, true);
+#else
     f32 alpha = g_drawHIO.mKeyAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mRupeeKeyAlpha);
 
     if (mpKeyParent->getAlphaRate() != alpha) {
         mpKeyParent->setAlphaRate(alpha);
         setAlphaAnimeMax(mpKeyParent, 5);
     }
+#endif
 }
 
 void dMeter2Draw_c::drawButtonA(u8 i_action, f32 i_posX, f32 i_posY, f32 i_textPosX, f32 i_textPosY,
@@ -2470,11 +2534,16 @@ void dMeter2Draw_c::drawButtonA(u8 i_action, f32 i_posX, f32 i_posY, f32 i_textP
         }
     }
 
+#if TARGET_PC
+    s_button_a_scale = var_f31;
+    s_button_a_text_scale = var_f30;
+#else
     mpButtonA->scale(var_f31 * i_scale, var_f31 * i_scale);
     mpButtonA->paneTrans(i_posX, i_posY);
     mpTextA->scale(var_f30 * i_scale, var_f30 * i_scale);
     mpTextA->paneTrans(g_drawHIO.mButtonATextPosX + i_textPosX,
                        g_drawHIO.mButtonATextPosY + i_textPosY IF_DUSK(+ (dusk::version::isLessThanWiiJpn() ? 6.0f : 0.0f)));
+#endif
 }
 
 void dMeter2Draw_c::drawButtonB(u8 i_action, bool param_1, f32 i_posX, f32 i_posY, f32 i_textPosX,
@@ -2561,9 +2630,15 @@ void dMeter2Draw_c::drawButtonB(u8 i_action, bool param_1, f32 i_posX, f32 i_pos
         mpScreen->search(MULTI_CHAR('item_b_n'))->hide();
     }
 
+#if TARGET_PC
+    s_button_b_kind = var_r31;
+    s_button_b_scale = var_f31;
+    s_button_b_text_scale = var_f30;
+#endif
     mpItemB->getPanePtr()->rotate(mpItemB->getSizeX() * 0.5f, mpItemB->getSizeY() * 0.5f, ROTATE_Z,
                                   g_drawHIO.mButtonBItemRotation[var_r31]);
 
+#if !TARGET_PC
     field_0x730 = var_f31 * i_scale;
     mpButtonB->scale(field_0x730 * field_0x734, field_0x730 * field_0x734);
     mpButtonB->paneTrans(g_drawHIO.mButtonBPosX + i_posX, g_drawHIO.mButtonBPosY + i_posY);
@@ -2580,6 +2655,7 @@ void dMeter2Draw_c::drawButtonB(u8 i_action, bool param_1, f32 i_posX, f32 i_pos
     mpTextB->scale(var_f30 * i_scale, var_f30 * i_scale);
     mpTextB->paneTrans(g_drawHIO.mButtonBFontPosX + i_textPosX,
                        g_drawHIO.mButtonBFontPosY + i_textPosY);
+#endif
 }
 
 void dMeter2Draw_c::drawButtonR(u8 unused0, u8 i_action, bool unused1, bool unused2) {
@@ -2831,27 +2907,21 @@ f32 dMeter2Draw_c::getButtonCrossParentInitTransY() {
 }
 
 void dMeter2Draw_c::drawButtonCross(f32 i_posX, f32 i_posY) {
-#if TARGET_PC
-    const f32 buttonCrossUserScale = dGetUserHudScale();
-    const f32 buttonCrossScale = g_drawHIO.mButtonCrossScale * buttonCrossUserScale;
-    mpButtonCrossParent->scale(buttonCrossScale, buttonCrossScale);
-#else
+#if !TARGET_PC
     mpButtonCrossParent->scale(g_drawHIO.mButtonCrossScale, g_drawHIO.mButtonCrossScale);
-#endif
     mpTextI->scale(g_drawHIO.mButtonCrossTextScale, g_drawHIO.mButtonCrossTextScale);
     mpTextM->scale(g_drawHIO.mButtonCrossTextScale, g_drawHIO.mButtonCrossTextScale);
-
-#if TARGET_PC
-    f32 buttonCrossPosX = i_posX;
-    f32 buttonCrossPosY = i_posY;
-    dAnchorHudScale(mpButtonCrossParent, HudCorner::BottomLeft, &buttonCrossPosX, &buttonCrossPosY);
-    mpButtonCrossParent->paneTrans(buttonCrossPosX, buttonCrossPosY);
-#else
     mpButtonCrossParent->paneTrans(i_posX, i_posY);
+#else
+    mpTextI->scale(g_drawHIO.mButtonCrossTextScale, g_drawHIO.mButtonCrossTextScale);
+    mpTextM->scale(g_drawHIO.mButtonCrossTextScale, g_drawHIO.mButtonCrossTextScale);
 #endif
 }
 
 void dMeter2Draw_c::setAlphaButtonCrossAnimeMin() {
+#if TARGET_PC
+    showCross(false);
+#else
     if (mpButtonCrossParent->getAlphaRate() != 0.0f) {
         mpButtonCrossParent->setAlphaRate(g_drawHIO.mParentAlpha);
         setAlphaAnimeMin(mpButtonCrossParent, 5);
@@ -2859,6 +2929,7 @@ void dMeter2Draw_c::setAlphaButtonCrossAnimeMin() {
 
     setAlphaButtonCrossItemAnimeMin();
     setAlphaButtonCrossMapAnimeMin();
+#endif
 }
 
 void dMeter2Draw_c::setAlphaButtonCrossAnimeMax() {
@@ -2937,6 +3008,7 @@ void dMeter2Draw_c::setAlphaButtonCrossMapAnimeMax() {
 }
 
 void dMeter2Draw_c::setAlphaButtonChange(bool param_0) {
+    IF_DUSK_BLOCK(!isExecuting())
     bool set_parent = false;
     bool set_buttonA = false;
     bool set_buttonB = false;
@@ -3132,9 +3204,13 @@ void dMeter2Draw_c::setAlphaButtonChange(bool param_0) {
         static_cast<J2DTextBox*>(mpXYText[4][1]->getPanePtr())
             ->setFontColor(g_drawHIO.mButtonXYTextColor, g_drawHIO.mButtonXYTextColor);
     }
+    IF_DUSK_BLOCK_END
 }
 
 void dMeter2Draw_c::setAlphaButtonAnimeMin() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowButtonParent, false);
+#else
     if (mpButtonParent->getAlphaRate() != 0.0f) {
         mpButtonParent->setAlphaRate(g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha);
         setAlphaAnimeMin(mpButtonParent, 5);
@@ -3143,9 +3219,13 @@ void dMeter2Draw_c::setAlphaButtonAnimeMin() {
             mpUzu->setAlphaRate(mButtonBaseAlpha * mpButtonParent->getAlphaRate());
         }
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaButtonAnimeMax() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowButtonParent, true);
+#else
     if (g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha != mpButtonParent->getAlphaRate()) {
         mpButtonParent->setAlphaRate(g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha);
         setAlphaAnimeMax(mpButtonParent, 5);
@@ -3160,9 +3240,13 @@ void dMeter2Draw_c::setAlphaButtonAnimeMax() {
             dMeter2Info_setLightDropGetFlag(dComIfGp_getStartStageDarkArea(), 2);
         }
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaButtonAAnimeMin() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowButtonA, false);
+#else
     if (mpButtonA->getAlphaRate() != 0.0f) {
         mpButtonA->setAlphaRate(g_drawHIO.mButtonAAlpha *
                                 (g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha));
@@ -3175,9 +3259,13 @@ void dMeter2Draw_c::setAlphaButtonAAnimeMin() {
             setAlphaAnimeMin(mpAText[i], 5);
         }
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaButtonAAnimeMax() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowButtonA, true);
+#else
     if (g_drawHIO.mButtonAAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha) !=
         mpButtonA->getAlphaRate())
     {
@@ -3192,9 +3280,13 @@ void dMeter2Draw_c::setAlphaButtonAAnimeMax() {
             setAlphaAnimeMax(mpAText[i], 5);
         }
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaButtonBAnimeMin() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowButtonB, false);
+#else
     if (mpButtonB->getAlphaRate() != 0.0f) {
         mpButtonB->setAlphaRate(g_drawHIO.mButtonBAlpha *
                                 (g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha));
@@ -3216,9 +3308,13 @@ void dMeter2Draw_c::setAlphaButtonBAnimeMin() {
             setAlphaAnimeMin(mpBText[i], 5);
         }
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaButtonBAnimeMax() {
+#if TARGET_PC
+    write_fade_row(this, kFadeRowButtonB, true);
+#else
     if (mpButtonB->getAlphaRate() !=
         g_drawHIO.mButtonBAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha))
     {
@@ -3242,10 +3338,14 @@ void dMeter2Draw_c::setAlphaButtonBAnimeMax() {
             setAlphaAnimeMax(mpBText[i], 5);
         }
     }
+#endif
 }
 
 void dMeter2Draw_c::setButtonIconAAlpha(u8 unused0, u32 unused1, bool unused2) {
     if (mpButtonA->isVisible()) {
+#if TARGET_PC
+        follow_button_a(true, !dMeter2Info_isUseButton(1) && !dComIfGp_isDoSetFlag(4), !dMeter2Info_isUseButton(1));
+#else
         u8 alpha = g_drawHIO.mButtonAAlpha *
                    (g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha) *
                    (f32)mpButtonA->getInitAlpha();
@@ -3265,11 +3365,17 @@ void dMeter2Draw_c::setButtonIconAAlpha(u8 unused0, u32 unused1, bool unused2) {
 
             mpAText[i]->setAlpha(alpha * alpha_rate);
         }
+#endif
+    } else {
+        IF_DUSK(follow_button_a(false, false, false));
     }
 }
 
 void dMeter2Draw_c::setButtonIconBAlpha(u8 unused0, u32 unused1, bool param_2) {
     if (mpItemB->isVisible() || mpLightB->isVisible() || mpButtonB->isVisible()) {
+#if TARGET_PC
+        follow_button_b(true, !(dMeter2Info_isUseButton(2) & 1) && !dMeter2Info_isSub2DStatus(1), !dMeter2Info_isUseButton(2) && !dMeter2Info_isSub2DStatus(1), param_2, mpItemB->isVisible());
+#else
         f32 temp_f30 =
             g_drawHIO.mButtonBAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha);
 
@@ -3307,18 +3413,25 @@ void dMeter2Draw_c::setButtonIconBAlpha(u8 unused0, u32 unused1, bool param_2) {
 
             mpBText[i]->setAlpha(alpha * temp_f31);
         }
+#endif
+    } else {
+        IF_DUSK(follow_button_b(false, false, false, false, false));
     }
 }
 
 void dMeter2Draw_c::setButtonIconMidonaAlpha(u32 param_0) {
+#if TARGET_PC
+    bool midona_live = false;
+    bool midona_hold = false;
+    f32 midona_z_target = 0.0f;
+#endif
     mpButtonMidona->scale(g_drawHIO.mMidnaIconScale, g_drawHIO.mMidnaIconScale);
     mpButtonMidona->paneTrans(g_drawHIO.mMidnaIconPosX, g_drawHIO.mMidnaIconPosY);
 
     if (mpButtonMidona->isVisible()) {
-        f32 temp_f30 =
-            g_drawHIO.mMidnaIconAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha);
+        IF_NOT_DUSK(f32 temp_f30 = g_drawHIO.mMidnaIconAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha));
         f32 var_f29 = (f32)mpButtonMidona->getInitAlpha() / 255.0f;
-        f32 temp_f31 = mpButtonParent->getAlphaRate();
+        f32 temp_f31 = DUSK_IF_ELSE(fade_row_factor(s_button_parent), mpButtonParent->getAlphaRate());
         bool var_r31 = 1;
 
         if (getCanoeFishing() ||
@@ -3345,7 +3458,7 @@ void dMeter2Draw_c::setButtonIconMidonaAlpha(u32 param_0) {
                 dMeter2Info_set2DVibration();
             }
 
-            mButtonZAlpha = var_f29;
+            IF_NOT_DUSK(mButtonZAlpha = var_f29);
             var_r31 = 0;
         }
 
@@ -3354,6 +3467,7 @@ void dMeter2Draw_c::setButtonIconMidonaAlpha(u32 param_0) {
                 field_0x738 = 0.0f;
             }
 
+#if !TARGET_PC
             if (mButtonZAlpha != var_f29) {
                 cLib_addCalc2(&mButtonZAlpha, var_f29, 0.4f, 0.5f);
 
@@ -3361,24 +3475,34 @@ void dMeter2Draw_c::setButtonIconMidonaAlpha(u32 param_0) {
                     mButtonZAlpha = var_f29;
                 }
             }
+#endif
         }
 
+#if TARGET_PC
+        midona_live = true;
+        midona_hold = var_r31 == 0;
+        midona_z_target = var_f29;
+#else
         mpButtonMidona->setAlpha(temp_f30 * (255.0f * mButtonZAlpha * temp_f31));
+#endif
     } else {
-        mButtonZAlpha = 0.0f;
+        IF_NOT_DUSK(mButtonZAlpha = 0.0f);
     }
 
     f32 var_f29_2 =
         (g_drawHIO.mButtonZAlpha * (g_drawHIO.mParentAlpha * g_drawHIO.mMainHUDButtonsAlpha) *
          (f32)mpButtonXY[2]->getInitAlpha()) /
         255.0f;
-    f32 temp_f30_2 = mpButtonParent->getAlphaRate();
+    IF_NOT_DUSK(f32 temp_f30_2 = mpButtonParent->getAlphaRate());
     if (param_0 & 0x1000000) {
         var_f29_2 = 0.0f;
     } else if (!dMeter2Info_isUseButton(0x800)) {
         var_f29_2 = (f32)g_drawHIO.mButtonXYBaseDimAlpha / 255.0f;
     }
 
+#if TARGET_PC
+    chase_midona(midona_live, midona_hold, midona_z_target, var_f29_2);
+#else
     if (field_0x724 != var_f29_2) {
         cLib_addCalc2(&field_0x724, var_f29_2, 0.4f, 0.5f);
 
@@ -3388,10 +3512,9 @@ void dMeter2Draw_c::setButtonIconMidonaAlpha(u32 param_0) {
     }
 
     mpButtonXY[2]->setAlpha(255.0f * field_0x724 * temp_f30_2);
-
-#if TARGET_PC
-    dusk::ui::update_midna_icon_texture(mpButtonMidona != NULL ? mpButtonMidona->getPanePtr() : NULL);
 #endif
+
+    IF_DUSK(dusk::ui::update_midna_icon_texture(mpButtonMidona != NULL ? mpButtonMidona->getPanePtr() : NULL));
 }
 
 void dMeter2Draw_c::setButtonIconAlpha(int i_no, u8 unused0, u32 unused1, bool unused2) {
@@ -3400,6 +3523,9 @@ void dMeter2Draw_c::setButtonIconAlpha(int i_no, u8 unused0, u32 unused1, bool u
     if (mpItemXY[i_no]->isVisible() || mpLightXY[i_no]->isVisible() ||
         mpButtonXY[i_no]->isVisible())
     {
+#if TARGET_PC
+        follow_button_xy(i_no, true, !dMeter2Info_isUseButton(i_no == 0 ? 4 : 8), getFishingType() != 0, mpItemXY[i_no]->isVisible());
+#else
         f32 var_f30 = 1.0f;
 
         int var_r26 = 1;
@@ -3473,7 +3599,13 @@ void dMeter2Draw_c::setButtonIconAlpha(int i_no, u8 unused0, u32 unused1, bool u
 
             mpXYText[i][i_no]->setAlpha((f32)var_r0 * temp_f31);
         }
+#endif
     }
+#if TARGET_PC
+    else {
+        follow_button_xy(i_no, false, false, false, false);
+    }
+#endif
 }
 
 ResTIMG* dMeter2Draw_c::getNumberTexture(int i) {
@@ -3637,6 +3769,12 @@ void dMeter2Draw_c::changeTextureItemXY(int i_no, u8 i_itemNo) {
 }
 
 void dMeter2Draw_c::setAlphaAnimeMin(CPaneMgrAlpha* i_pane, s16 i_min) {
+#if TARGET_PC
+    if (i_pane == NULL) {
+        return;
+    }
+    dusk::interp::pane::present_alpha_rate_min(i_pane, i_pane->getAlphaRate(), i_min);
+#else
     f32 alpha_rate = i_pane->getAlphaRate();
     s16 alpha_timer = i_pane->getAlphaTimer();
     if (alpha_timer > i_min) {
@@ -3656,9 +3794,16 @@ void dMeter2Draw_c::setAlphaAnimeMin(CPaneMgrAlpha* i_pane, s16 i_min) {
         i_pane->alphaAnimeStart(alpha_timer);
         i_pane->setAlphaRate(alpha_rate * ((f32)alpha_timer / (f32)i_min));
     }
+#endif
 }
 
 void dMeter2Draw_c::setAlphaAnimeMax(CPaneMgrAlpha* i_pane, s16 i_max) {
+#if TARGET_PC
+    if (i_pane == NULL) {
+        return;
+    }
+    dusk::interp::pane::present_alpha_rate_max(i_pane, i_pane->getAlphaRate(), i_max);
+#else
     f32 alpha_rate = i_pane->getAlphaRate();
     s16 alpha_timer = i_pane->getAlphaTimer();
 
@@ -3675,6 +3820,7 @@ void dMeter2Draw_c::setAlphaAnimeMax(CPaneMgrAlpha* i_pane, s16 i_max) {
         i_pane->alphaAnimeStart(alpha_timer);
         i_pane->setAlphaRate(alpha_rate * ((f32)alpha_timer / (f32)i_max));
     }
+#endif
 }
 
 void dMeter2Draw_c::setItemNum(u8 i_button, u8 i_num, u8 i_max) {
@@ -3772,7 +3918,7 @@ void dMeter2Draw_c::drawKanteraMeter(u8 i_button, f32 i_alphaRate) {
 }
 
 u8 dMeter2Draw_c::isButtonVisible() {
-    return (mpButtonParent->getAlphaRate() == 0.0f) ^ 1;
+    return (DUSK_IF_ELSE(fade_row_factor(s_button_parent), mpButtonParent->getAlphaRate()) == 0.0f) ^ 1;
 }
 
 void dMeter2Draw_c::setItemParamX(u8 i_itemNo) {
@@ -4198,7 +4344,7 @@ bool dMeter2Draw_c::isBButtonShow(bool param_0) {
 }
 
 s16 dMeter2Draw_c::getButtonTimer() {
-    return mpButtonParent->getAlphaTimer();
+    return DUSK_IF_ELSE((s16)s_button_parent.timer, mpButtonParent->getAlphaTimer());
 }
 
 // unused
