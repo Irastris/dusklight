@@ -12,9 +12,6 @@
 #ifdef __cplusplus
 namespace dusk::interp {
 
-template <typename T, int capacity, int strand_count>
-class DualBufferGroup;
-
 template <typename T, int capacity>
 class DualBuffer {
 public:
@@ -63,9 +60,6 @@ public:
     }
 
 private:
-    template <typename U, int C, int S>
-    friend class DualBufferGroup;
-
     bool fits(int count) const {
         if (count > capacity) {
             return false;
@@ -146,20 +140,6 @@ public:
     typedef DualBuffer<T, capacity> Buffer;
 
     DualBuffer<T, capacity>& operator[](int i) { return m_buffers[i]; }
-    const DualBuffer<T, capacity>& operator[](int i) const { return m_buffers[i]; }
-
-    void reset() {
-        for (int i = 0; i < strand_count; ++i) {
-            m_buffers[i].reset();
-        }
-    }
-
-    void schedule(void (*post)(void*) = NULL, void* post_user = NULL) {
-        for (int i = 0; i < strand_count; ++i) {
-            m_buffers[i].schedule();
-        }
-        finish_post(post, post_user);
-    }
 
     void writeback(T* const* src_and_dst, int count, void (*post)(void*) = NULL,
                    void* post_user = NULL) {

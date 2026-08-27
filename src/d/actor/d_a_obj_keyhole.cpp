@@ -11,20 +11,6 @@
 #include "d/actor/d_a_player.h"
 #include "Z2AudioLib/Z2Instances.h"
 
-#if TARGET_PC
-#include "dusk/interp/dual_buffer.h"
-
-static const int CHAIN_STRAND_COUNT = 6;
-static const int CHAIN_SEGMENT_MAX = 16;
-
-namespace {
-struct KeyholeInterp {
-    Mtx draw[CHAIN_STRAND_COUNT][CHAIN_SEGMENT_MAX];
-    dusk::interp::DualBufferGroup<Mtx, CHAIN_SEGMENT_MAX, CHAIN_STRAND_COUNT> chain;
-};
-}  // namespace
-#endif
-
 daObj_Keyhole_HIO_c::daObj_Keyhole_HIO_c() {
     id = -1;
     obj_size = 1.0f;
@@ -50,10 +36,6 @@ static int nodeCallBack(J3DJoint* i_joint, int param_1) {
     return 1;
 }
 
-#if TARGET_PC
-static void keyhole_chain_interp_post(void* pUserWork);
-#endif
-
 static int daObj_Keyhole_Draw(obj_keyhole_class* i_this) {
     fopAc_ac_c* actor = &i_this->actor;
     g_env_light.settingTevStruct(16, &actor->current.pos, &actor->tevStr);
@@ -74,12 +56,6 @@ static int daObj_Keyhole_Draw(obj_keyhole_class* i_this) {
             dComIfGp_entrySimpleModel(chain_s->model[j], fopAcM_GetRoomNo(actor));
         }
     }
-
-#if TARGET_PC
-    if (i_this->chain_num > 0 && i_this->chain_num <= CHAIN_SEGMENT_MAX) {
-        dusk::interp::get<KeyholeInterp>(i_this).chain.schedule(&keyhole_chain_interp_post, i_this);
-    }
-#endif
 
     return 1;
 }
@@ -394,32 +370,7 @@ static void chain_move(obj_keyhole_class* i_this) {
             ANGLE_ADD(sp8, TREG_S(0) + 0x3D00);
         }
     }
-
-#if TARGET_PC
-    if (i_this->chain_num > 0 && i_this->chain_num <= CHAIN_SEGMENT_MAX) {
-        auto& interp = dusk::interp::get<KeyholeInterp>(i_this);
-        Mtx curr[CHAIN_SEGMENT_MAX];
-        for (int i = 0; i < CHAIN_STRAND_COUNT; i++) {
-            for (int j = 0; j < i_this->chain_num; j++) {
-                MTXCopy(i_this->chain_s[i].model[j]->getBaseTRMtx(), curr[j]);
-            }
-            interp.chain[i].capture_on_sim(curr, i_this->chain_num);
-        }
-    }
-#endif
 }
-
-#if TARGET_PC
-static void keyhole_chain_interp_post(void* pUserWork) {
-    obj_keyhole_class* i_this = (obj_keyhole_class*)pUserWork;
-    auto& interp = dusk::interp::get<KeyholeInterp>(i_this);
-    for (int i = 0; i < CHAIN_STRAND_COUNT; i++) {
-        for (int j = 0; j < i_this->chain_num; j++) {
-            i_this->chain_s[i].model[j]->setBaseTRMtx(interp.draw[i][j]);
-        }
-    }
-}
-#endif
 
 static void open(obj_keyhole_class* i_this) {
     switch (i_this->mode) {
@@ -798,13 +749,6 @@ static int daObj_Keyhole_Create(fopAc_ac_c* a_this) {
             OS_REPORT("//////////////OBJ_KEYHOLE SET NON !!\n");
             return cPhs_ERROR_e;
         }
-
-#if TARGET_PC
-        auto& interp = dusk::interp::get<KeyholeInterp>(i_this);
-        for (int i = 0; i < CHAIN_STRAND_COUNT; i++) {
-            interp.chain[i].bind(interp.draw[i]);
-        }
-#endif
 
         OS_REPORT("//////////////OBJ_KEYHOLE SET 2 !!\n");
 
