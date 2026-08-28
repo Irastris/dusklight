@@ -12,6 +12,12 @@
 #include "d/d_meter_HIO.h"
 #include "float.h"
 
+#if TARGET_PC
+#include "dusk/game_clock.h"
+#include "dusk/interp/actor_pose.h"
+#include "dusk/interp/frame_interpolation.h"
+#endif
+
 bool dMapInfo_n::chkGetCompass() {
     return dComIfGs_isDungeonItemCompass() ? true : false;
 }
@@ -60,7 +66,12 @@ Vec dMapInfo_n::getMapPlayerPos() {
     BE(Vec) pos;
     fopAc_ac_c* player = daPy_getPlayerActorClass();
     if (player != NULL) {
-        pos = player->current.pos;
+#if TARGET_PC
+        dusk::interp::ActorPresentationPose pose;
+        const bool interp = dusk::game_clock::is_presentation_frame() &&
+            dusk::interp::sample_actor_pose(player, dusk::interp::get_interpolation_step(), &pose);
+#endif
+        pos = IF_DUSK(interp ? pose.position :) player->current.pos;
     } else {
         pos.x = 0.0f;
         pos.y = 0.0f;
@@ -82,7 +93,12 @@ s16 dMapInfo_n::getMapPlayerAngleY() {
 
     daPy_py_c* player = daPy_getPlayerActorClass();
     if (player != NULL) {
-        angle = player->shape_angle.y;
+#if TARGET_PC
+        dusk::interp::ActorPresentationPose pose;
+        const bool interp = dusk::game_clock::is_presentation_frame() &&
+            dusk::interp::sample_actor_pose(player, dusk::interp::get_interpolation_step(), &pose);
+#endif
+        angle = IF_DUSK(interp ? pose.shapeAngle.y :) player->shape_angle.y;
     }
 
     dStage_FileList2_dt_c* fileList2_p = dStage_roomControl_c::getFileList2(stayNo);
@@ -801,11 +817,13 @@ void renderingPlusDoorAndCursor_c::afterDrawPath() {
         drawTreasure();
     }
 
+#if !TARGET_PC
     if (isRendCursor() && daPy_getPlayerActorClass() != NULL) {
         f32 cursor_size = getPlayerCursorSize();
         drawCursor(dMapInfo_n::getMapPlayerPos(), dMapInfo_n::getMapPlayerAngleY(), 0x1E,
                    cursor_size);
     }
+#endif
 
     if (mRoomNoSingle >= 0 && isRendIcon()) {
         drawTreasureAfterPlayer();

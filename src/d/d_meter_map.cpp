@@ -19,7 +19,10 @@
 #include <cstring>
 
 #if TARGET_PC
+#include "d/d_com_inf_game.h"
 #include "d/d_meter2.h"
+#include "m_Do/m_Do_graphic.h"
+#include "m_Do/m_Do_mtx.h"
 #include "dusk/action_bindings.h"
 #include "dusk/game_clock.h"
 #include "dusk/interp/vdt.h"
@@ -31,6 +34,70 @@ namespace {
 // Reads the user HUD scale setting, clamped to a safe range.
 f32 dGetUserHudScale() {
     return std::clamp(dusk::getSettings().game.hudScale.getValue(), 0.5f, 2.0f);
+}
+
+void draw_player_cursor(dMap_c* map, J2DGrafContext* graf, f32 mapX, f32 mapY, f32 mapW, f32 mapH, u8 mapAlpha) {
+    if (map == NULL || graf == NULL || mapAlpha == 0 || daPy_getPlayerActorClass() == NULL) {
+        return;
+    }
+
+    const f32 viewW = map->field_0x8;
+    const f32 viewH = map->field_0xc;
+    const f32 cmPerTexel = map->getCmPerTexel();
+    if (viewW == 0.0f || viewH == 0.0f || cmPerTexel == 0.0f || mapW <= 0.0f || mapH <= 0.0f) {
+        return;
+    }
+
+    Vec pos = dMapInfo_n::getMapPlayerPos();
+    s16 angle = dMapInfo_n::getMapPlayerAngleY();
+    const f32 cursorScale = (map->getPlayerCursorSize() / 640.0f) * cmPerTexel;
+
+    static Vec const l_offset[3] = {
+        {0.0f, 0.0f, 400.0f},
+        {-200.0f, 0.0f, -240.0f},
+        {200.0f, 0.0f, -240.0f},
+    };
+
+    mDoMtx_stack_c::transS(pos.x, 0.0f, pos.z);
+    mDoMtx_stack_c::scaleM(cursorScale, 1.0f, cursorScale);
+    mDoMtx_stack_c::YrotM(angle);
+
+    const f32 centerX = map->mPosX;
+    const f32 centerZ = map->mPosZ;
+    const bool mirror = dusk::getSettings().game.enableMirrorMode.getValue();
+    Vec screen[3];
+    for (int i = 0; i < 3; i++) {
+        Vec world;
+        mDoMtx_stack_c::multVec(&l_offset[i], &world);
+        const f32 u = mirror ? 0.5f - (world.x - centerX) / viewW
+                             : 0.5f + (world.x - centerX) / viewW;
+        const f32 v = 0.5f + (world.z - centerZ) / viewH;
+        screen[i].x = mapX + u * mapW;
+        screen[i].y = mapY + v * mapH;
+    }
+
+    graf->setup2D();
+
+    GXColor color = {255, 220, 0, mapAlpha};
+    if (dMap_HIO_prm_res_dst_s::m_res != NULL) {
+        dMpath_ColorCnv_n::convertRGB5A3_To_GXColor(color, dMap_HIO_prm_res_dst_s::m_res->palette_data[0x1E].field_0x0);
+        color.a = mapAlpha;
+    }
+    map->setTevSettingNonTextureDirectColor();
+    GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO, GX_CA_A0);
+    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
+    GXSetTevColor(GX_TEVREG0, color);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+    GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+    GXSetCullMode(GX_CULL_NONE);
+    GXClearVtxDesc();
+    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XY, GX_F32, 0);
+    GXBegin(GX_TRIANGLES, GX_VTXFMT0, 3);
+    for (int i = 0; i < 3; i++) {
+        GXPosition2f32(screen[i].x, screen[i].y);
+    }
+    GXEnd();
 }
 
 }  // namespace
@@ -666,7 +733,7 @@ void dMeterMap_c::draw() {
         #endif
         mMapJ2DPicture->setAlpha(alpha);
 
-        #if TARGET_PC
+#if TARGET_PC
         // Scale the minimap with the user HUD scale and shift down so its bottom-left
         // corner stays anchored to the same screen position as at scale 1.0.
         const f32 userHudScale = dGetUserHudScale();
@@ -676,9 +743,10 @@ void dMeterMap_c::draw() {
         mMapJ2DPicture->draw(mDoGph_gInf_c::ScaleHUDXLeft(drawPosX),
                              drawPosY + mapBottomShift, scaledSizeX, scaledSizeY,
                              false, false, false);
-        #else
+        draw_player_cursor(mMap, graf, mDoGph_gInf_c::ScaleHUDXLeft(drawPosX), drawPosY + mapBottomShift, scaledSizeX, scaledSizeY, alpha);
+#else
         mMapJ2DPicture->draw(drawPosX, drawPosY, sizeX, sizeY, false, false, false);
-        #endif
+#endif
 
         mMapJ2DPicture->calcMtx();
     }
