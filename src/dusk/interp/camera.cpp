@@ -11,6 +11,7 @@
 #include "f_op/f_op_actor_mng.h"
 #include "f_op/f_op_camera_mng.h"
 #include "m_Do/m_Do_graphic.h"
+#include "m_Do/m_Do_lib.h"
 
 #include <algorithm>
 #include <cmath>
@@ -42,10 +43,22 @@ struct CameraSnapshot {
     cXyz secondaryTargetAttentionPosition{};
     u32 collisionFlags = 0;
     f32 gazeBackMargin = 0.f;
+    Mtx44 projViewMtx{};
     bool active = false;
     bool wideZoom = false;
     bool valid = false;
 };
+
+void cache_snapshot_proj_view(CameraSnapshot* dst) {
+    Mtx44 proj;
+    Mtx viewMtx;
+    C_MTXPerspective(proj, dst->fovy, dst->aspect, dst->near_, dst->far_);
+#if WIDESCREEN_SUPPORT
+    mDoGph_gInf_c::setWideZoomProjection(proj);
+#endif
+    mDoMtx_lookAt(viewMtx, &dst->eye, &dst->center, &dst->up, dst->bank);
+    cMtx_concatProjView(proj, viewMtx, dst->projViewMtx);
+}
 
 CameraSnapshot s_camPrev{};
 CameraSnapshot s_camCurr{};
@@ -105,6 +118,7 @@ void copy_camera_to_snap(CameraSnapshot* dst, camera_process_class* camera) {
         dst->secondaryTargetAttentionPosition = cXyz{};
     }
     dst->valid = true;
+    cache_snapshot_proj_view(dst);
 }
 
 struct SphericalOffset {
@@ -347,6 +361,28 @@ void reset_camera() {
 
 const CameraInterpolationDiagnostics& camera_interpolation_diagnostics() {
     return s_cameraDiagnostics;
+}
+
+bool project_recorded_pair(Vec const* previous_world, Vec const* current_world, float step, Vec* out_screen) {
+    if (previous_world == nullptr || current_world == nullptr || out_screen == nullptr ||
+        !s_camPrev.valid || !s_camCurr.valid)
+    {
+        return false;
+    }
+
+    if (dComIfGd_getView() == nullptr) {
+        return false;
+    }
+
+    Vec previous_screen;
+    Vec current_screen;
+    mDoLib_project(const_cast<Vec*>(previous_world), &previous_screen, &s_camPrev.projViewMtx);
+    mDoLib_project(const_cast<Vec*>(current_world), &current_screen, &s_camCurr.projViewMtx);
+
+    out_screen->x = lerp(previous_screen.x, current_screen.x, step);
+    out_screen->y = lerp(previous_screen.y, current_screen.y, step);
+    out_screen->z = lerp(previous_screen.z, current_screen.z, step);
+    return true;
 }
 
 void interp_view(view_class* view) {

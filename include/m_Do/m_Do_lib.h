@@ -39,7 +39,7 @@ struct mDoLib_clipper {
     static DUSK_GAME_DATA f32 mFovyRate;
 };
 
-void mDoLib_project(Vec* src, Vec* dst);
+void mDoLib_project(Vec* src, Vec* dst IF_DUSK_ARG(Mtx44* projView = nullptr));
 u32 mDoLib_setResTimgObj(ResTIMG const* res, TGXTexObj* o_texObj, u32 tlut_name,
                          TGXTlutObj* o_tlutObj);
 void mDoLib_pos2camera(Vec* src, Vec* dst);

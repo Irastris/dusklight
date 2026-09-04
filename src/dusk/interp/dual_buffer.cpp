@@ -22,6 +22,25 @@ OwnerMap& owner_map() {
 
 }  // namespace
 
+void* detail::find(const void* key, const void* type) {
+    if (key == nullptr) {
+        return nullptr;
+    }
+
+    OwnerMap& stored = owner_map();
+    auto it = stored.find(reinterpret_cast<uintptr_t>(key));
+    if (it == stored.end()) {
+        return nullptr;
+    }
+
+    for (Slot& slot : it->second) {
+        if (slot.type == type) {
+            return slot.ptr;
+        }
+    }
+    return nullptr;
+}
+
 void* detail::acquire(const void* key, const void* type, void* (*make)(), void (*destroy)(void*)) {
     const uintptr_t id = reinterpret_cast<uintptr_t>(key);
     auto& slots = owner_map()[id];

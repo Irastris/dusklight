@@ -33,15 +33,24 @@ class daPy_sightPacket_c : public dDlst_base_c {
 public:
     daPy_sightPacket_c() {}
     virtual void draw();
+#if TARGET_PC
+    virtual ~daPy_sightPacket_c();
+#else
     virtual ~daPy_sightPacket_c() {}
+#endif
 
     void setSight();
     void setSightImage(ResTIMG* i_img);
 
     u8 getDrawFlg() { return mDrawFlag; }
     void onDrawFlg() { mDrawFlag = true; }
+#if TARGET_PC
+    void offDrawFlg();
+    void setPos(const cXyz* i_pos);
+#else
     void offDrawFlg() { mDrawFlag = false; }
     void setPos(const cXyz* i_pos) { mPos = *i_pos; }
+#endif
     cXyz* getPosP() { return &mPos; }
 
     /* 0x04 */ u8 mDrawFlag;

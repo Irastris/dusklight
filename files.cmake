@@ -1472,6 +1472,7 @@ set(DUSK_FILES
         src/dusk/interp/particle.cpp
         src/dusk/interp/skeleton.cpp
         src/dusk/interp/vdt.cpp
+        src/dusk/interp/world_point.cpp
         src/dusk/io.cpp
         src/dusk/iso_validate.cpp
         src/dusk/language.cpp

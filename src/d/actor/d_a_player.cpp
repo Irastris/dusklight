@@ -15,6 +15,10 @@
 #include "d/actor/d_a_midna.h"
 #include "d/actor/d_a_spinner.h"
 
+#if TARGET_PC
+#include "dusk/interp/world_point.h"
+#endif
+
 bool daPy_frameCtrl_c::checkAnmEnd() {
     if (getEndFlg() != 0 && getNowSetFlg() == 0) {
         return true;
@@ -431,9 +435,7 @@ JKRHeap* daPy_anmHeap_c::setAnimeHeap() {
 
 void daPy_sightPacket_c::draw() {
     ZoneScoped;
-#if !TARGET_PC
-    TGXTexObj texObj;
-#endif
+    IF_NOT_DUSK(TGXTexObj texObj);
 
     j3dSys.reinitGX();
     GXSetNumIndStages(0);
@@ -512,6 +514,24 @@ void daPy_sightPacket_c::setSightImage(ResTIMG* i_img) {
     mpImg = i_img;
     mpData = (u8*)i_img + i_img->imageOffset;
 }
+
+#if TARGET_PC
+daPy_sightPacket_c::~daPy_sightPacket_c() {
+    dusk::interp::erase_world_point(this);
+}
+
+void daPy_sightPacket_c::setPos(const cXyz* i_pos) {
+    dusk::interp::capture_world_point(this, mPos);
+    mPos = *i_pos;
+}
+
+void daPy_sightPacket_c::offDrawFlg() {
+    if (mDrawFlag) {
+        dusk::interp::invalidate_world_point(this);
+    }
+    mDrawFlag = false;
+}
+#endif
 #endif
 
 BOOL daPy_py_c::checkMasterSwordEquip() {

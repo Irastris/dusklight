@@ -5,8 +5,62 @@
 #include "d/d_com_inf_game.h"
 #include "JSystem/J2DGraph/J2DAnimation.h"
 #include "JSystem/J2DGraph/J2DAnmLoader.h"
-#include "dusk/interp/frame_interpolation.h"
 #include <cstring>
+
+#if TARGET_PC
+#include "dusk/game_clock.h"
+#include "dusk/interp/dual_buffer.h"
+#include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/lerp.h"
+#include "dusk/interp/vdt.h"
+#include "dusk/interp/world_point.h"
+
+namespace {
+
+struct CursorWorld {
+    cXyz pos{};
+    f32 offset_x = 0.0f;
+    f32 offset_y = 0.0f;
+    f32 prev_offset_x = 0.0f;
+    f32 prev_offset_y = 0.0f;
+    uint64_t tick = 0;
+    uint64_t epoch = ~uint64_t{0};
+    bool prev_offset_valid = false;
+};
+
+void capture_offset(CursorWorld& rec) {
+    if (!dusk::game_clock::is_sim_frame()) {
+        return;
+    }
+
+    const uint64_t epoch = dusk::game_clock::g_frameTiming.presentationEpoch;
+    const uint64_t seq = dusk::interp::sim_tick_seq();
+    if (epoch != rec.epoch) {
+        rec.prev_offset_valid = false;
+        rec.epoch = epoch;
+        rec.tick = seq;
+        return;
+    }
+
+    if (seq != rec.tick) {
+        rec.prev_offset_x = rec.offset_x;
+        rec.prev_offset_y = rec.offset_y;
+        rec.prev_offset_valid = true;
+        rec.tick = seq;
+    }
+}
+
+void apply_world(dSelect_cursor_c* cursor, cXyz const& pos, f32 offset_x, f32 offset_y) {
+    CursorWorld& rec = dusk::interp::get<CursorWorld>(cursor);
+    dusk::interp::capture_world_point(cursor, rec.pos);
+    capture_offset(rec);
+    rec.pos = pos;
+    rec.offset_x = offset_x;
+    rec.offset_y = offset_y;
+}
+
+}  // namespace
+#endif
 
 dSelect_cursorHIO_c::dSelect_cursorHIO_c() {
     field_0x8 = 1.0f;
@@ -183,6 +237,10 @@ dSelect_cursor_c::dSelect_cursor_c(u8 param_0, f32 param_1, JKRArchive* param_2)
     }
 
     field_0x40 = 0.0f;
+#if TARGET_PC
+    mOscillationPhase = 0.0f;
+    mAlphaFade = 0.0f;
+#endif
     switch(mNameIdx) {
         case 1:
             field_0x50 = mpScreen->search(MULTI_CHAR('ssel_ico'))->getTranslateX();
@@ -199,7 +257,6 @@ dSelect_cursor_c::dSelect_cursor_c(u8 param_0, f32 param_1, JKRArchive* param_2)
     mPositionY = 0.0f;
     mPositionX = 0.0f;
 }
-
 
 dSelect_cursor_c::~dSelect_cursor_c() {
     JKR_DELETE(mpScreen);
@@ -244,10 +301,33 @@ dSelect_cursor_c::~dSelect_cursor_c() {
         JKR_DELETE(mpCursorHIO);
         mpCursorHIO = NULL;
     }
+#if TARGET_PC
+    dusk::interp::erase_world_point(this);
+#endif
 }
+
+#if TARGET_PC
+void dSelect_cursor_c::setWorldPos(cXyz const& pos, f32 offset_x, f32 offset_y) {
+    apply_world(this, pos, offset_x, offset_y);
+}
+#endif
 
 void dSelect_cursor_c::draw() {
     mpPaneMgr->getAlphaRate();
+#if TARGET_PC
+    if (CursorWorld* rec = dusk::interp::find<CursorWorld>(this)) {
+        Vec screen;
+        dusk::interp::present_world_point(this, rec->pos, &screen);
+        f32 offset_x = rec->offset_x;
+        f32 offset_y = rec->offset_y;
+        if (rec->prev_offset_valid && dusk::interp::is_enabled()) {
+            const f32 step = dusk::interp::get_interpolation_step();
+            offset_x = dusk::interp::lerp(rec->prev_offset_x, rec->offset_x, step);
+            offset_y = dusk::interp::lerp(rec->prev_offset_y, rec->offset_y, step);
+        }
+        setPos(screen.x + offset_x, screen.y + offset_y);
+    }
+#endif
     update();
     J2DGrafContext* gphCtx = dComIfGp_getCurrentGrafPort();
     gphCtx->setup2D();
@@ -281,22 +361,22 @@ void dSelect_cursor_c::update() {
     if (mUpdateFlag) {
         if (field_0x30) {
             if (chkPlayAnime(0)) {
-#ifdef TARGET_PC
-                if (dusk::interp::get_ui_tick_pending())
-#endif
-                {
-                    if (mNameIdx == 1) {
-                        field_0x44 += mpCursorHIO->field_0x8 * fVar1;
-                    } else {
-                        field_0x44 += fVar1;
-                    }
+#if TARGET_PC
+                dusk::vdt::present_looping(field_0x44, field_0x30, mNameIdx == 1 ? mpCursorHIO->field_0x8 * fVar1 : fVar1);
+#else
+                if (mNameIdx == 1) {
+                    field_0x44 += mpCursorHIO->field_0x8 * fVar1;
+                } else {
+                    field_0x44 += fVar1;
+                }
 
-                    if (field_0x44 >= field_0x30->getFrameMax()) {
-                        field_0x44 -= field_0x30->getFrameMax();
-                    }
+                if (field_0x44 >= field_0x30->getFrameMax()) {
+                    field_0x44 -= field_0x30->getFrameMax();
                 }
 
                 field_0x30->setFrame(field_0x44);
+#endif
+
                 setBpkAnimation(field_0x30);
             } else {
                 if (field_0x44 != 1.0f) {
@@ -310,53 +390,47 @@ void dSelect_cursor_c::update() {
         for (int i = 0; i < 2; i++) {
             if (field_0x34[i]) {
                 if ((i == 0 && chkPlayAnime(2)) || (i == 1 && chkPlayAnime(3))) {
-#ifdef TARGET_PC
-                    if (dusk::interp::get_ui_tick_pending())
-#endif
-                    {
-                        if (mNameIdx == 1) {
-                            field_0x48[i] += mpCursorHIO->field_0x8 * fVar1;
-                        } else {
-                            field_0x48[i] += fVar1;
-                        }
-                        if (field_0x48[i] >= field_0x34[i]->getFrameMax()) {
-                            field_0x48[i] -= field_0x34[i]->getFrameMax();
-                        }
+#if TARGET_PC
+                    dusk::vdt::present_looping(field_0x48[i], field_0x34[i], mNameIdx == 1 ? mpCursorHIO->field_0x8 * fVar1 : fVar1);
+#else
+                    if (mNameIdx == 1) {
+                        field_0x48[i] += mpCursorHIO->field_0x8 * fVar1;
+                    } else {
+                        field_0x48[i] += fVar1;
+                    }
+                    if (field_0x48[i] >= field_0x34[i]->getFrameMax()) {
+                        field_0x48[i] -= field_0x34[i]->getFrameMax();
                     }
 
                     field_0x34[i]->setFrame(field_0x48[i]);
+#endif
                 }
                 setBtk0Animation(field_0x34[i]);
             }
         }
 
         if (field_0x2C && chkPlayAnime(1)) {
-#ifdef TARGET_PC
-            if (dusk::interp::get_ui_tick_pending())
-#endif
-            {
-                if (mNameIdx == 1) {
-                    field_0x40 += mpCursorHIO->field_0x8 * fVar1;
-                } else {
-                    field_0x40 += fVar1;
-                }
-                if (field_0x40 >= field_0x2C->getFrameMax()) {
-                    field_0x40 -= field_0x2C->getFrameMax();
-                }
+#if TARGET_PC
+            dusk::vdt::present_looping(field_0x40, field_0x2C, mNameIdx == 1 ? mpCursorHIO->field_0x8 * fVar1 : fVar1);
+#else
+            if (mNameIdx == 1) {
+                field_0x40 += mpCursorHIO->field_0x8 * fVar1;
+            } else {
+                field_0x40 += fVar1;
+            }
+            if (field_0x40 >= field_0x2C->getFrameMax()) {
+                field_0x40 -= field_0x2C->getFrameMax();
             }
 
             field_0x2C->setFrame(field_0x40);
+#endif
+
             setBckAnimation(field_0x2C);
 
         }
 
         if (chkPlayAnime(1) && mNameIdx == 0) {
-#ifdef TARGET_PC
-            if (dusk::interp::get_ui_tick_pending())
-#endif
-            {
-                setCursorAnimation();
-            }
+            setCursorAnimation();
         }
 
         mpScreen->animation();
@@ -457,6 +531,22 @@ void dSelect_cursor_c::setAlphaRate(f32 i_alphaRate) {
 }
 
 int dSelect_cursor_c::addAlpha() {
+#if TARGET_PC
+    if (mpPaneMgr->isVisible() == 0) {
+        mpPaneMgr->show();
+    }
+
+    if (mAlphaFade >= 5.0f) {
+        return 1;
+    }
+
+    dusk::vdt::advance_toward_frame(mAlphaFade, 5.0f, 1.0f);
+    setAlphaRate(mAlphaFade / 5.0f);
+    if (mAlphaFade >= 5.0f) {
+        return 1;
+    }
+    return 0;
+#else
     s16 alpha_timer = mpPaneMgr->getAlphaTimer();
 
     if (mpPaneMgr->isVisible() == 0) {
@@ -472,9 +562,28 @@ int dSelect_cursor_c::addAlpha() {
     }
 
     return 0;
+#endif
 }
 
 int dSelect_cursor_c::decAlpha() {
+#if TARGET_PC
+    if (mAlphaFade <= 0.0f) {
+        if (mpPaneMgr->isVisible() == 1) {
+            mpPaneMgr->hide();
+        }
+        return 1;
+    }
+
+    dusk::vdt::advance_toward_frame(mAlphaFade, 0.0f, 1.0f);
+    setAlphaRate(mAlphaFade / 5.0f);
+    if (mAlphaFade <= 0.0f) {
+        if (mpPaneMgr->isVisible() == 1) {
+            mpPaneMgr->hide();
+        }
+        return 1;
+    }
+    return 0;
+#else
     s16 alpha_timer = mpPaneMgr->getAlphaTimer();
 
     if (alpha_timer <= 0) {
@@ -489,6 +598,7 @@ int dSelect_cursor_c::decAlpha() {
     }
 
     return 0;
+#endif
 }
 
 void dSelect_cursor_c::setBpkAnimation(J2DAnmColor* param_0) {
@@ -543,13 +653,17 @@ void dSelect_cursor_c::setCursorAnimation() {
         fVar1 = 0.5f;
     }
 
+#if TARGET_PC
+    dusk::vdt::advance_looping_frame(mOscillationPhase, fVar1, 20.0f);
+#else
     field_0x40 += fVar1;
     if (field_0x40 >= 20.0f) {
         field_0x40 -= 20.0f;
     }
+#endif
     f32 fVar2;
     f32 param3 = mParam3;
-    fVar2 = field_0x40;
+    fVar2 = DUSK_IF_ELSE(mOscillationPhase, field_0x40);
     if (fVar2 < 10.0f) {
         fVar2 /= 10.0f;
     } else {

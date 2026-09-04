@@ -212,14 +212,25 @@ private:
 
 namespace detail {
 void* acquire(const void* key, const void* type, void* (*make)(), void (*destroy)(void*));
+void* find(const void* key, const void* type);
+}
+
+template <typename Record>
+const void* record_type_token() {
+    static const char token{};
+    return &token;
 }
 
 template <typename Record>
 Record& get(const void* key) {
-    static const char token{};
     return *static_cast<Record*>(detail::acquire(
-        key, &token, []() -> void* { return new Record; },
+        key, record_type_token<Record>(), []() -> void* { return new Record; },
         [](void* p) { delete static_cast<Record*>(p); }));
+}
+
+template <typename Record>
+Record* find(const void* key) {
+    return static_cast<Record*>(detail::find(key, record_type_token<Record>()));
 }
 
 void erase_owned_buffers(const void* key);

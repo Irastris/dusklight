@@ -19,6 +19,9 @@
 #include "d/actor/d_a_tag_shop_item.h"
 #include <cstring>
 
+#if TARGET_PC
+#include "dusk/interp/lerp.h"
+#endif
 
 static daTag_ShopItem_c* dShopSystem_itemActor[7] = {
     NULL, NULL, NULL, NULL, NULL, NULL, NULL,
@@ -876,10 +879,14 @@ int dShopSystem_c::seq_start(fopAc_ac_c* actor, dMsgFlow_c* i_flow) {
     }
 
     cXyz pos3d;
-    cXyz pos2d;
     pos3d.set(mItemCtrl.getCurrentPos(0));
+#if TARGET_PC
+    mpDrawCursor->setWorldPos(pos3d, 0.0f, g_cursorHIO.mShopCursorOffsetY);
+#else
+    cXyz pos2d;
     pos3Dto2D(&pos3d, &pos2d);
     mpDrawCursor->setPos(pos2d.x, pos2d.y + g_cursorHIO.mShopCursorOffsetY);
+#endif
 
     if (chkSpMode() && !beforeStartSeqAction(i_flow, field_0xf5c)) {
         return 0;
@@ -1093,8 +1100,13 @@ int dShopSystem_c::seq_select(fopAc_ac_c* actor, dMsgFlow_c* i_flow) {
 
     if (old_cursor != 0) {
         cXyz pos3d;
-        cXyz pos2d;
         pos3d.set(mItemCtrl.getCurrentPos(old_cursor - 1));
+#if TARGET_PC
+        mpDrawCursor->setWorldPos(
+            pos3d, old_cursor == 7 ? g_cursorHIO.mMagicArmorCursorOffsetX : 0.0f,
+            old_cursor == 7 ? g_cursorHIO.mMagicArmorCursorOffsetY : g_cursorHIO.mShopCursorOffsetY);
+#else
+        cXyz pos2d;
         pos3Dto2D(&pos3d, &pos2d);
 
         if (old_cursor == 7) {
@@ -1105,6 +1117,7 @@ int dShopSystem_c::seq_select(fopAc_ac_c* actor, dMsgFlow_c* i_flow) {
         }
 
         mpDrawCursor->setPos(pos2d.x, pos2d.y);
+#endif
     }
 
     return 0;
@@ -1113,12 +1126,31 @@ int dShopSystem_c::seq_select(fopAc_ac_c* actor, dMsgFlow_c* i_flow) {
 int dShopSystem_c::seq_moving(fopAc_ac_c*, dMsgFlow_c*) {
     field_0xf68++;
 
-    cXyz last_pos3d;
     cXyz pos3d;
+    pos3d.set(mItemCtrl.getCurrentPos(mCursorPos - 1));
+
+#if TARGET_PC
+    f32 to_ox = mCursorPos == 7 ? g_cursorHIO.mMagicArmorCursorOffsetX : 0.0f;
+    f32 to_oy = mCursorPos == 7 ? g_cursorHIO.mMagicArmorCursorOffsetY : g_cursorHIO.mShopCursorOffsetY;
+
+    if (mLastCursorPos != 0) {
+        cXyz last_pos3d;
+        last_pos3d.set(mItemCtrl.getCurrentPos(mLastCursorPos - 1));
+        f32 from_ox = mLastCursorPos == 7 ? g_cursorHIO.mMagicArmorCursorOffsetX : 0.0f;
+        f32 from_oy = mLastCursorPos == 7 ? g_cursorHIO.mMagicArmorCursorOffsetY : g_cursorHIO.mShopCursorOffsetY;
+        f32 tmp = (f32)(field_0xf68 * field_0xf68) / 9.0f;
+        cXyz lerped;
+        dusk::interp::lerp(lerped, last_pos3d, pos3d, tmp);
+        mpDrawCursor->setWorldPos(lerped, dusk::interp::lerp(from_ox, to_ox, tmp),
+                                  dusk::interp::lerp(from_oy, to_oy, tmp));
+    } else {
+        mpDrawCursor->setWorldPos(pos3d, to_ox, to_oy);
+    }
+#else
+    cXyz last_pos3d;
     cXyz last_pos2d;
     cXyz pos2d;
 
-    pos3d.set(mItemCtrl.getCurrentPos(mCursorPos - 1));
     pos3Dto2D(&pos3d, &pos2d);
 
     if (mCursorPos == 7) {
@@ -1142,10 +1174,10 @@ int dShopSystem_c::seq_moving(fopAc_ac_c*, dMsgFlow_c*) {
         f32 tmp = (f32)(field_0xf68 * field_0xf68) / 9.0f;
         mpDrawCursor->setPos(last_pos2d.x + tmp * (pos2d.x - last_pos2d.x),
                              last_pos2d.y + tmp * (pos2d.y - last_pos2d.y));
-
     } else {
         mpDrawCursor->setPos(pos2d.x, pos2d.y);
     }
+#endif
 
     if (field_0xf68 >= 3) {
         setSeq(SEQ_SELECT);

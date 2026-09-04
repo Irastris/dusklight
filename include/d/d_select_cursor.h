@@ -47,13 +47,6 @@ public:
         mPositionY = y;
     }
 
-#ifdef TARGET_PC
-    f32 getPositionX() const { return mPositionX; }
-    f32 getPositionY() const { return mPositionY; }
-
-    void refreshAspectScale(f32 param_0);
-#endif
-
     void onUpdateFlag() { mUpdateFlag = true; }
 
     void resetUpdateFlag() { mUpdateFlag = false; }
@@ -65,6 +58,11 @@ public:
     bool chkPlayAnime(int i_flag) { return field_0xb4 & (1 << i_flag); }
     void onPlayAllAnime() { field_0xb4 = 0xff; }
     void offPlayAllAnime() { field_0xb4 = 0; }
+
+#if TARGET_PC
+    void refreshAspectScale(f32 param_0);
+    void setWorldPos(cXyz const& pos, f32 offset_x, f32 offset_y);
+#endif
 
     /* 0x04 */ J2DScreen* mpScreen;
     /* 0x08 */ J2DPane* mpPane;
@@ -85,9 +83,6 @@ public:
     /* 0x58 */ f32 mPositionX;
     /* 0x5C */ f32 mPositionY;
     /* 0x60 */ f32 mParam1;
-#ifdef TARGET_PC
-    f32 mBaseParam1;
-#endif
     /* 0x64 */ f32 mParam2;
     /* 0x68 */ f32 mParam3;
     /* 0x6C */ f32 mParam4;
@@ -100,6 +95,11 @@ public:
     /* 0xB5 */ u8 mNameIdx;
     /* 0xB6 */ u8 field_0xb6;
     /* 0xB7 */ bool mUpdateFlag;
+#if TARGET_PC
+    f32 mBaseParam1;
+    f32 mOscillationPhase;
+    f32 mAlphaFade;
+#endif
 };
 
 #endif /* D_D_SELECT_CURSOR_H */

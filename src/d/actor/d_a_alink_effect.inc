@@ -10,6 +10,7 @@
 #include "d/d_k_wmark.h"
 
 #if TARGET_PC
+#include "dusk/interp/world_point.h"
 #include "helpers/gx_helper.h"
 #endif
 
@@ -2266,6 +2267,13 @@ BOOL daAlink_sight_c::create() {
 }
 
 void daAlink_sight_c::draw() {
+#if TARGET_PC
+    Vec proj;
+    dusk::interp::present_world_point(this, mPos, &proj);
+    mDoMtx_stack_c::transS(proj.x, proj.y, proj.z);
+    mDoMtx_stack_c::scaleM(32.0f, 32.0f, 32.0f);
+    mDoMtx_copy(mDoMtx_stack_c::get(), mProjMtx);
+#endif
     if (mLockFlag) {
         mLockCursor.setPos(mProjMtx[0][3], mProjMtx[1][3]);
         mLockCursor.draw();

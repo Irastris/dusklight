@@ -57,7 +57,7 @@ void mDoLib_clipper::setup(f32 fovy, f32 aspect, f32 near_, f32 far_) {
     mFovyRate = cM_scos(tmp) / cM_ssin(tmp);
 }
 
-void mDoLib_project(Vec* src, Vec* dst) {
+void mDoLib_project(Vec* src, Vec* dst IF_DUSK_ARG(Mtx44* projView)) {
     if (dComIfGd_getView() == NULL) {
         dst->x = 0.0f;
         dst->y = 0.0f;
@@ -65,15 +65,21 @@ void mDoLib_project(Vec* src, Vec* dst) {
         return;
     }
 
+#if TARGET_PC
+    if (projView == nullptr) {
+        projView = &dComIfGd_getView()->projViewMtx;
+    }
+#endif
+
     { int unused; }
 
     Vec multVec;
-    cMtx_multVec(*dComIfGd_getProjViewMtx(), src, &multVec);
+    cMtx_multVec(*DUSK_IF_ELSE(projView, dComIfGd_getProjViewMtx()), src, &multVec);
 
-    f32 calcFloat = (src->x * (*dComIfGd_getProjViewMtx())[3][0]) +
-                    (src->y * (*dComIfGd_getProjViewMtx())[3][1]) +
-                    (src->z * (*dComIfGd_getProjViewMtx())[3][2]) +
-                    (*dComIfGd_getProjViewMtx())[3][3];
+    f32 calcFloat = (src->x * (*DUSK_IF_ELSE(projView, dComIfGd_getProjViewMtx()))[3][0]) +
+                    (src->y * (*DUSK_IF_ELSE(projView, dComIfGd_getProjViewMtx()))[3][1]) +
+                    (src->z * (*DUSK_IF_ELSE(projView, dComIfGd_getProjViewMtx()))[3][2]) +
+                    (*DUSK_IF_ELSE(projView, dComIfGd_getProjViewMtx()))[3][3];
     if (multVec.z >= 0.0f) {
         multVec.z = 0.0f;
     }
