@@ -2,21 +2,32 @@
 
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/interp/lerp.h"
+
 #include "SSystem/SComponent/c_xyz.h"
 
-#include <cstring>
 #include <dolphin/mtx.h>
-#include <stddef.h>
+
+#include <cstring>
+#include <new>
 #include <stdint.h>
 
 #ifdef __cplusplus
 namespace dusk::interp {
 
-template <typename T, int capacity>
-class DualBuffer {
+class WeatherBuffer;
+
+namespace detail {
+
+template <typename T>
+class DualBufferCore {
+    friend class WeatherBuffer;
+
 public:
-    explicit DualBuffer(T* dst = NULL)
-        : m_prev_valid(false),
+    explicit DualBufferCore(T* dst = NULL)
+        : m_prev(NULL),
+          m_curr(NULL),
+          m_capacity(0),
+          m_prev_valid(false),
           m_curr_valid(false),
           m_count(0),
           m_dst(dst),
@@ -59,9 +70,22 @@ public:
         capture(src, count);
     }
 
+protected:
+    void bind_storage(T* prev, T* curr, int capacity) {
+        if (m_count > 0 && m_prev != NULL && m_curr != NULL && prev != NULL && curr != NULL &&
+            (prev != m_prev || curr != m_curr))
+        {
+            std::memcpy(prev, m_prev, static_cast<size_t>(m_count) * sizeof(T));
+            std::memcpy(curr, m_curr, static_cast<size_t>(m_count) * sizeof(T));
+        }
+        m_prev = prev;
+        m_curr = curr;
+        m_capacity = capacity;
+    }
+
 private:
     bool fits(int count) const {
-        if (count > capacity) {
+        if (count > m_capacity) {
             return false;
         }
         return count > 0;
@@ -104,7 +128,7 @@ private:
     }
 
     static void present_trampoline(void* user) {
-        static_cast<DualBuffer*>(user)->present();
+        static_cast<DualBufferCore*>(user)->present();
     }
 
     void present() {
@@ -123,8 +147,9 @@ private:
         roll();
     }
 
-    T m_prev[capacity];
-    T m_curr[capacity];
+    T* m_prev;
+    T* m_curr;
+    int m_capacity;
     bool m_prev_valid;
     bool m_curr_valid;
     int m_count;
@@ -134,19 +159,62 @@ private:
     uint64_t m_rolled_seq;
 };
 
-template <int N>
+}  // namespace detail
+
+template <typename T, int capacity>
+class DualBuffer : public detail::DualBufferCore<T> {
+public:
+    explicit DualBuffer(T* dst = NULL) : detail::DualBufferCore<T>(dst) {
+        this->bind_storage(m_inline_prev, m_inline_curr, capacity);
+    }
+
+    DualBuffer(const DualBuffer& other) : detail::DualBufferCore<T>(other) {
+        this->bind_storage(m_inline_prev, m_inline_curr, capacity);
+    }
+
+    DualBuffer& operator=(const DualBuffer& other) {
+        if (this != &other) {
+            detail::DualBufferCore<T>::operator=(other);
+            this->bind_storage(m_inline_prev, m_inline_curr, capacity);
+        }
+        return *this;
+    }
+
+private:
+    T m_inline_prev[capacity];
+    T m_inline_curr[capacity];
+};
+
 class WeatherBuffer {
 public:
-    WeatherBuffer() : count(0) {}
+    WeatherBuffer()
+        : world(NULL), sim(NULL), skip(NULL), store(NULL), count(0), capacity(0) {}
+
+    ~WeatherBuffer() { release(); }
+
+    WeatherBuffer(const WeatherBuffer&) = delete;
+    WeatherBuffer& operator=(const WeatherBuffer&) = delete;
 
     void reset() {
         buf.reset();
         count = 0;
     }
 
+    void release() {
+        reset();
+        delete[] store;
+        delete[] skip;
+        store = NULL;
+        world = NULL;
+        sim = NULL;
+        skip = NULL;
+        buf.bind_storage(NULL, NULL, 0);
+        capacity = 0;
+    }
+
     template <typename Sample>
     void capture(int n, f32 snap_dist, Sample sample) {
-        if (n <= 0 || n > N) {
+        if (!is_enabled() || n <= 0 || n > kMaxCount || !ensure(n)) {
             reset();
             return;
         }
@@ -169,6 +237,39 @@ public:
     }
 
 private:
+    static const int kMaxCount = 500;
+
+    bool ensure(int n) {
+        if (n <= capacity) {
+            return store != NULL;
+        }
+
+        cXyz* next_store = new (std::nothrow) cXyz[static_cast<size_t>(n) * 4];
+        if (next_store == NULL) {
+            return false;
+        }
+        u8* next_skip = new (std::nothrow) u8[static_cast<size_t>(n)];
+        if (next_skip == NULL) {
+            delete[] next_store;
+            return false;
+        }
+
+        cXyz* next_sim = next_store + 3 * n;
+        if (count > 0 && sim != NULL) {
+            std::memcpy(next_sim, sim, static_cast<size_t>(count) * sizeof(cXyz));
+        }
+
+        buf.bind_storage(next_store, next_store + n, n);
+        delete[] store;
+        delete[] skip;
+        store = next_store;
+        world = next_store + 2 * n;
+        sim = next_sim;
+        skip = next_skip;
+        capacity = n;
+        return true;
+    }
+
     static void snap_skipped(void* user) {
         WeatherBuffer* self = static_cast<WeatherBuffer*>(user);
         for (int i = 0; i < self->count; i++) {
@@ -178,11 +279,13 @@ private:
         }
     }
 
-    DualBuffer<cXyz, N> buf;
-    cXyz world[N];
-    cXyz sim[N];
-    u8 skip[N];
+    detail::DualBufferCore<cXyz> buf;
+    cXyz* world;
+    cXyz* sim;
+    u8* skip;
+    cXyz* store;
     int count;
+    int capacity;
 };
 
 namespace detail {

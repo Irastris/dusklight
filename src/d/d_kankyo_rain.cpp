@@ -20,24 +20,24 @@
 #include "dusk/version.hpp"
 
 namespace {
-dusk::interp::WeatherBuffer<250> s_rain;
-dusk::interp::WeatherBuffer<500> s_snow_pos;
-dusk::interp::WeatherBuffer<500> s_snow_base;
-dusk::interp::WeatherBuffer<300> s_housi_world;
-dusk::interp::WeatherBuffer<300> s_housi_scale;
-dusk::interp::WeatherBuffer<50> s_cloud;
-dusk::interp::WeatherBuffer<100> s_vrkumo;
+dusk::interp::WeatherBuffer s_rain;
+dusk::interp::WeatherBuffer s_snow_pos;
+dusk::interp::WeatherBuffer s_snow_base;
+dusk::interp::WeatherBuffer s_housi_world;
+dusk::interp::WeatherBuffer s_housi_scale;
+dusk::interp::WeatherBuffer s_cloud;
+dusk::interp::WeatherBuffer s_vrkumo;
 }  // namespace
 
 namespace dusk::interp {
 void clear_weather_buffers() {
-    s_rain.reset();
-    s_snow_pos.reset();
-    s_snow_base.reset();
-    s_housi_world.reset();
-    s_housi_scale.reset();
-    s_cloud.reset();
-    s_vrkumo.reset();
+    s_rain.release();
+    s_snow_pos.release();
+    s_snow_base.release();
+    s_housi_world.release();
+    s_housi_scale.release();
+    s_cloud.release();
+    s_vrkumo.release();
 }
 }  // namespace dusk::interp
 #endif
