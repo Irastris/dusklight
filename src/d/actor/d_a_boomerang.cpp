@@ -14,6 +14,153 @@
 #include "Z2AudioLib/Z2Instances.h"
 #include "SSystem/SComponent/c_math.h"
 
+#if TARGET_PC
+#include "JSystem/J3DGraphAnimator/J3DAnimation.h"
+#include "dusk/game_clock.h"
+#include "dusk/interp/anim.h"
+#include "dusk/interp/dual_buffer.h"
+#include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/lerp.h"
+#include "dusk/interp/sim_snapshot.h"
+#include "dusk/interp/world_point.h"
+
+namespace {
+
+struct SightSlot {
+    cXyz prev_pos{};
+    f32 prev_bck = 0.0f;
+    f32 prev_brk = 0.0f;
+    u8 prev_alpha = 0;
+    uint64_t epoch = ~uint64_t{0};
+    dusk::interp::SimSnapshot pos;
+    dusk::interp::SimSnapshot anim;
+};
+
+struct PresentedSlot {
+    f32 bck;
+    f32 brk;
+    u8 alpha;
+    f32 x;
+    f32 y;
+};
+
+const void* sight_slot_key(const daBoomerang_sight_c* sight, int i) {
+    return &sight->m_pos[i];
+}
+
+f32 sight_slot_rate(int i) {
+    return i == BOOMERANG_LOCK_MAX ? 0.9f : 1.1f;
+}
+
+void capture_slot_anim(daBoomerang_sight_c* sight, int i) {
+    if (!dusk::game_clock::is_sim_frame()) {
+        return;
+    }
+
+    SightSlot& rec = dusk::interp::get<SightSlot>(sight_slot_key(sight, i));
+    if (dusk::interp::roll_sim_snapshot(rec.epoch, rec.anim, rec.pos) ==
+        dusk::interp::SimSnapshotRoll::Capture)
+    {
+        rec.prev_bck = sight->field_0x98[i];
+        rec.prev_brk = sight->field_0xb0[i];
+        rec.prev_alpha = sight->m_alpha[i];
+    }
+}
+
+void capture_slot_pos(daBoomerang_sight_c* sight, int i) {
+    if (!dusk::game_clock::is_sim_frame()) {
+        return;
+    }
+
+    SightSlot& rec = dusk::interp::get<SightSlot>(sight_slot_key(sight, i));
+    if (dusk::interp::roll_sim_snapshot(rec.epoch, rec.pos, rec.anim) ==
+        dusk::interp::SimSnapshotRoll::Capture)
+    {
+        rec.prev_pos = sight->m_pos[i];
+    }
+}
+
+void invalidate_slot(daBoomerang_sight_c* sight, int i) {
+    if (SightSlot* rec = dusk::interp::find<SightSlot>(sight_slot_key(sight, i))) {
+        *rec = {};
+    }
+}
+
+void erase_sight_slots(daBoomerang_sight_c* sight) {
+    for (int i = 0; i <= BOOMERANG_LOCK_MAX; ++i) {
+        dusk::interp::erase_owned_buffers(sight_slot_key(sight, i));
+    }
+}
+
+void swap_or_invalidate_slots(daBoomerang_sight_c* sight, int a, int b) {
+    SightSlot* rec_a = dusk::interp::find<SightSlot>(sight_slot_key(sight, a));
+    SightSlot* rec_b = dusk::interp::find<SightSlot>(sight_slot_key(sight, b));
+    if (rec_a != nullptr && rec_b != nullptr) {
+        const SightSlot tmp = *rec_a;
+        *rec_a = *rec_b;
+        *rec_b = tmp;
+    } else {
+        if (rec_a != nullptr) {
+            *rec_a = {};
+        }
+        if (rec_b != nullptr) {
+            *rec_b = {};
+        }
+    }
+}
+
+PresentedSlot present_sight_slot(daBoomerang_sight_c* sight, int i) {
+    PresentedSlot out;
+    out.bck = sight->field_0x98[i];
+    out.brk = sight->field_0xb0[i];
+    out.alpha = sight->m_alpha[i];
+    out.x = sight->m_proj_posX[i];
+    out.y = sight->m_proj_posY[i];
+
+    const SightSlot* rec = dusk::interp::find<SightSlot>(sight_slot_key(sight, i));
+    const f32 step = dusk::interp::get_interpolation_step();
+    Vec screen;
+    if (rec == nullptr || !rec->pos.prev_valid || !dusk::interp::is_enabled() ||
+        !dusk::interp::project_recorded_pair(&rec->prev_pos, &sight->m_pos[i], step, &screen))
+    {
+        mDoLib_project(&sight->m_pos[i], &screen);
+    }
+    out.x = screen.x;
+    out.y = screen.y;
+
+    if (rec == nullptr || !rec->anim.prev_valid || !dusk::interp::is_enabled()) {
+        return out;
+    }
+
+    const f32 rate = sight_slot_rate(i);
+    unsigned bck_attr = J3DFrameCtrl::EMode_LOOP;
+    if (out.bck < 21.0f || rec->prev_bck < 21.0f) {
+        bck_attr = J3DFrameCtrl::EMode_NONE;
+    }
+
+    f32 bck;
+    if (dusk::interp::anim::try_present(rec->prev_bck,
+                                        {out.bck, rate, 21.0f, 50.0f, bck_attr}, step, &bck))
+    {
+        out.bck = bck;
+    }
+
+    f32 brk;
+    const f32 brk_end = sight->m_cursorYellow2Brk->getFrameMax();
+    if (dusk::interp::anim::try_present(rec->prev_brk,
+                                        {out.brk, rate, 0.0f, brk_end, J3DFrameCtrl::EMode_LOOP},
+                                        step, &brk))
+    {
+        out.brk = brk;
+    }
+
+    out.alpha = dusk::interp::lerp(rec->prev_alpha, out.alpha, step);
+    return out;
+}
+
+}  // namespace
+#endif
+
 int daBoomerang_sight_c::createHeap() {
     void* tmpData;
     JKRArchive* archive = dComIfG_getObjectResInfo(daAlink_c::getAlinkArcName())->getArchive();
@@ -252,12 +399,18 @@ void daBoomerang_sight_c::initialize() {
 }
 
 int daBoomerang_sight_c::playAnime(int param_0, int param_1) {
+#if TARGET_PC
+    if (!dusk::game_clock::is_sim_frame()) {
+        return 0;
+    }
+#endif
     int i;
     f32* var_r30 = field_0x98;
     f32* var_r29 = field_0xb0;
     u8* alpha_p = m_alpha;
 
     for (i = 0; i < BOOMERANG_LOCK_MAX; i++, var_r30++, var_r29++, alpha_p++) {
+        IF_DUSK(capture_slot_anim(this, i));
         *var_r30 += 1.1f;
         if (*var_r30 >= 50.0f) {
             *var_r30 += -29.0f;
@@ -275,9 +428,15 @@ int daBoomerang_sight_c::playAnime(int param_0, int param_1) {
             if (*alpha_p == 0 && i == 0) {
                 m_redSight = false;
             }
+#if TARGET_PC
+            if (*alpha_p == 0) {
+                invalidate_slot(this, i);
+            }
+#endif
         }
     }
 
+    IF_DUSK(capture_slot_anim(this, BOOMERANG_LOCK_MAX));
     if (*var_r30 < 21.0f) {
         *var_r30 = 21.0f;
     }
@@ -293,10 +452,26 @@ int daBoomerang_sight_c::playAnime(int param_0, int param_1) {
     }
 
     if (mReserve != 0) {
+#if TARGET_PC
+        const int reached = cLib_chaseUC(alpha_p, 0x80, 30);
+        if (*alpha_p == 0) {
+            invalidate_slot(this, BOOMERANG_LOCK_MAX);
+        }
+        return reached;
+#else
         return cLib_chaseUC(alpha_p, 0x80, 30);
+#endif
     }
 
+#if TARGET_PC
+    const int reached = cLib_chaseUC(alpha_p, 0, 30);
+    if (*alpha_p == 0) {
+        invalidate_slot(this, BOOMERANG_LOCK_MAX);
+    }
+    return reached;
+#else
     return cLib_chaseUC(alpha_p, 0, 30);
+#endif
 }
 
 void daBoomerang_sight_c::initFrame(int i_no) {
@@ -307,6 +482,7 @@ void daBoomerang_sight_c::initFrame(int i_no) {
     if (i_no == 0) {
         m_redSight = true;
     }
+    IF_DUSK(invalidate_slot(this, i_no));
 }
 
 void daBoomerang_sight_c::copyNumData(int i_no) {
@@ -328,18 +504,22 @@ void daBoomerang_sight_c::copyNumData(int i_no) {
     cXyz temp_pos = m_pos[i_no];
     m_pos[i_no] = m_pos[next_no];
     m_pos[next_no] = temp_pos;
+    IF_DUSK(swap_or_invalidate_slots(this, i_no, next_no));
 }
 
 void daBoomerang_sight_c::setSight(const cXyz* i_pos, int i_no) {
     if (m_alpha[i_no]) {
+        IF_DUSK(capture_slot_pos(this, i_no));
         if (i_pos != NULL) {
             m_pos[i_no] = *i_pos;
         }
 
+#if !TARGET_PC
         Vec proj;
         mDoLib_project(&m_pos[i_no], &proj);
         m_proj_posX[i_no] = proj.x;
         m_proj_posY[i_no] = proj.y;
+#endif
     }
 }
 
@@ -357,11 +537,16 @@ void daBoomerang_sight_c::draw() {
 
     for (int i = 0; i < 6; i++, alpha_p++) {
         if (*alpha_p != 0) {
-            m_cursorYellowBck->setFrame(field_0x98[i]);
-            m_cursorYellowBpk->setFrame(field_0x98[i] > 21.0f ? 21.0f : field_0x98[i]);
+#if TARGET_PC
+            const PresentedSlot presented = present_sight_slot(this, i);
+            m_proj_posX[i] = presented.x;
+            m_proj_posY[i] = presented.y;
+#endif
+            m_cursorYellowBck->setFrame(DUSK_IF_ELSE(presented.bck, field_0x98[i]));
+            m_cursorYellowBpk->setFrame(DUSK_IF_ELSE(presented.bck, field_0x98[i]) > 21.0f ? 21.0f : DUSK_IF_ELSE(presented.bck, field_0x98[i]));
 
             if (i == 5) {
-                m_cursorYellow2Brk->setFrame(field_0xb0[i]);
+                m_cursorYellow2Brk->setFrame(DUSK_IF_ELSE(presented.brk, field_0xb0[i]));
                 cursor0_pane = m_cursorYellow0Pane;
                 cursor1_pane = m_cursorYellow1Pane;
                 cursor2_pane = m_cursorYellow2Pane;
@@ -369,7 +554,7 @@ void daBoomerang_sight_c::draw() {
                 cursorAll_pane = m_cursorYellowAllPane;
                 var_f31 = 80.0f;
             } else if (i == 0 && m_redSight) {
-                m_cursorRed2Brk->setFrame(field_0xb0[i]);
+                m_cursorRed2Brk->setFrame(DUSK_IF_ELSE(presented.brk, field_0xb0[i]));
                 cursor0_pane = m_cursorRed0Pane;
                 cursor1_pane = m_cursorRed1Pane;
                 cursor2_pane = m_cursorRed2Pane;
@@ -377,7 +562,7 @@ void daBoomerang_sight_c::draw() {
                 cursorAll_pane = m_cursorRedAllPane;
                 var_f31 = 35.0f;
             } else {
-                m_cursorOrange2Brk->setFrame(field_0xb0[i]);
+                m_cursorOrange2Brk->setFrame(DUSK_IF_ELSE(presented.brk, field_0xb0[i]));
                 cursor0_pane = m_cursorOrange0Pane;
                 cursor1_pane = m_cursorOrange1Pane;
                 cursor2_pane = m_cursorOrange2Pane;
@@ -391,13 +576,13 @@ void daBoomerang_sight_c::draw() {
             cursorAll_pane->translate(m_proj_posX[i], m_proj_posY[i]);
             field_0x98[i] = field_0x98[i];
 
-            if (!(field_0x98[i] < 15.0f)) {
-                if (field_0x98[i] < 21.0f) {
-                    var_f30 = var_f31 * (field_0x98[i] - 15.0f) * 0.16666667f;
+            if (!(DUSK_IF_ELSE(presented.bck, field_0x98[i]) < 15.0f)) {
+                if (DUSK_IF_ELSE(presented.bck, field_0x98[i]) < 21.0f) {
+                    var_f30 = var_f31 * (DUSK_IF_ELSE(presented.bck, field_0x98[i]) - 15.0f) * 0.16666667f;
                 } else if (i == 5) {
-                    var_f30 = var_f31 * (*alpha_p * 0.00390625f + 0.5f);
+                    var_f30 = var_f31 * (DUSK_IF_ELSE(presented.alpha, *alpha_p) * 0.00390625f + 0.5f);
                 } else {
-                    var_f30 = var_f31 * (*alpha_p * 0.0019607844f + 0.5f);
+                    var_f30 = var_f31 * (DUSK_IF_ELSE(presented.alpha, *alpha_p) * 0.0019607844f + 0.5f);
                 }
 
                 cursor0_pane->translate(0.0f, -var_f30);
@@ -406,9 +591,19 @@ void daBoomerang_sight_c::draw() {
             }
 
             screen->draw(0.0f, 0.0f, ctx);
+#if TARGET_PC
+        } else {
+            invalidate_slot(this, i);
+#endif
         }
     }
 }
+
+#if TARGET_PC
+daBoomerang_sight_c::~daBoomerang_sight_c() {
+    erase_sight_slots(this);
+}
+#endif
 
 void daBoomerang_c::windModelCallBack() {
     mDoMtx_stack_c::YrotS(shape_angle.y);

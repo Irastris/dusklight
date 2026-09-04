@@ -8,10 +8,10 @@
 #include <cstring>
 
 #if TARGET_PC
-#include "dusk/game_clock.h"
 #include "dusk/interp/dual_buffer.h"
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/interp/lerp.h"
+#include "dusk/interp/sim_snapshot.h"
 #include "dusk/interp/vdt.h"
 #include "dusk/interp/world_point.h"
 
@@ -23,30 +23,16 @@ struct CursorWorld {
     f32 offset_y = 0.0f;
     f32 prev_offset_x = 0.0f;
     f32 prev_offset_y = 0.0f;
-    uint64_t tick = 0;
     uint64_t epoch = ~uint64_t{0};
-    bool prev_offset_valid = false;
+    dusk::interp::SimSnapshot offset;
 };
 
 void capture_offset(CursorWorld& rec) {
-    if (!dusk::game_clock::is_sim_frame()) {
-        return;
-    }
-
-    const uint64_t epoch = dusk::game_clock::g_frameTiming.presentationEpoch;
-    const uint64_t seq = dusk::interp::sim_tick_seq();
-    if (epoch != rec.epoch) {
-        rec.prev_offset_valid = false;
-        rec.epoch = epoch;
-        rec.tick = seq;
-        return;
-    }
-
-    if (seq != rec.tick) {
+    if (dusk::interp::roll_sim_snapshot(rec.epoch, rec.offset) ==
+        dusk::interp::SimSnapshotRoll::Capture)
+    {
         rec.prev_offset_x = rec.offset_x;
         rec.prev_offset_y = rec.offset_y;
-        rec.prev_offset_valid = true;
-        rec.tick = seq;
     }
 }
 
@@ -320,7 +306,7 @@ void dSelect_cursor_c::draw() {
         dusk::interp::present_world_point(this, rec->pos, &screen);
         f32 offset_x = rec->offset_x;
         f32 offset_y = rec->offset_y;
-        if (rec->prev_offset_valid && dusk::interp::is_enabled()) {
+        if (rec->offset.prev_valid && dusk::interp::is_enabled()) {
             const f32 step = dusk::interp::get_interpolation_step();
             offset_x = dusk::interp::lerp(rec->prev_offset_x, rec->offset_x, step);
             offset_y = dusk::interp::lerp(rec->prev_offset_y, rec->offset_y, step);
