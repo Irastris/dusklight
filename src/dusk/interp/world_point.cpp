@@ -1,6 +1,5 @@
 #include "dusk/interp/world_point.h"
 
-#include "dusk/game_clock.h"
 #include "dusk/interp/dual_buffer.h"
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/interp/sim_snapshot.h"
@@ -21,7 +20,7 @@ struct Record {
 namespace dusk::interp {
 
 void capture_world_point(const void* key, const cXyz& outgoing) {
-    if (key == nullptr || !game_clock::is_sim_frame()) {
+    if (key == nullptr || !should_capture()) {
         return;
     }
 

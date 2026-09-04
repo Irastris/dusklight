@@ -1,7 +1,6 @@
 #include "dusk/interp/actor_pose.h"
 
 #include "dusk/interp/frame_interpolation.h"
-#include "dusk/game_clock.h"
 #include "dusk/interp/lerp.h"
 #include "f_op/f_op_actor_mng.h"
 
@@ -78,7 +77,7 @@ void clear_actor_pose() {
 }
 
 void capture_actor_pose(fopAc_ac_c* actor) {
-    if (!is_enabled() || !game_clock::is_sim_frame() || actor == nullptr) {
+    if (!should_capture() || actor == nullptr) {
         return;
     }
 

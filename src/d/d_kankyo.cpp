@@ -175,7 +175,7 @@ static uint64_t s_presentationLightingEpoch = 0;
 static bool s_presentationLightingInitialized = false;
 
 static bool prepare_presentation_lighting_tick() {
-    if (!dusk::interp::is_enabled() || !dusk::game_clock::is_sim_frame()) {
+    if (!dusk::interp::should_capture()) {
         return false;
     }
 

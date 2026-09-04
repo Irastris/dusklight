@@ -180,6 +180,10 @@ bool is_enabled() {
     return game_clock::g_frameTiming.interpolating;
 }
 
+bool should_capture() {
+    return is_enabled() && game_clock::is_sim_frame();
+}
+
 void begin_record() {
     if (!is_enabled()) {
         clear_interpolation_history();
@@ -320,7 +324,7 @@ void add_interpolation_callback(InterpolationCallBack pCallBack, void* pUserWork
 
 void add_presentation_callbacks(InterpolationCallBack begin, InterpolationCallBack end,
                                 void* pUserWork) {
-    if (!is_enabled() || is_presentation_active() || !game_clock::is_sim_frame()) {
+    if (!should_capture() || is_presentation_active()) {
         return;
     }
     if (begin == nullptr && end == nullptr) {
@@ -332,9 +336,7 @@ void add_presentation_callbacks(InterpolationCallBack begin, InterpolationCallBa
 
 void add_model_interpolation_callbacks(J3DModel* model, InterpolationCallBack before,
                                        InterpolationCallBack after, void* pUserWork) {
-    if (!is_enabled() || is_presentation_active() || !game_clock::is_sim_frame() ||
-        model == nullptr)
-    {
+    if (!should_capture() || is_presentation_active() || model == nullptr) {
         return;
     }
 

@@ -3177,7 +3177,7 @@ bool mDoExt_3DlineInterp_c::init(u16 strandCount, u16 maxPointsPerStrand) {
 }
 
 void mDoExt_3DlineInterp_c::capture(mDoExt_3Dline_c* lines, u16 strandCount, u16 pointCount, u16 maxPointsPerStrand) {
-    if (!dusk::interp::is_enabled() || !dusk::game_clock::is_sim_frame()) {
+    if (!dusk::interp::should_capture()) {
         return;
     }
     if (mPrev == NULL || mCurr == NULL || lines == NULL) {

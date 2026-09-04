@@ -5,7 +5,6 @@
 #include "JSystem/J3DGraphAnimator/J3DMtxBuffer.h"
 #include "dusk/interp/anim.h"
 #include "dusk/interp/frame_interpolation.h"
-#include "dusk/game_clock.h"
 #include "dusk/interp/matrix.h"
 #include "m_Do/m_Do_ext.h"
 
@@ -733,7 +732,7 @@ FrameState capture_frame_state(mDoExt_morf_c& morph) {
 template <typename Morph>
 void capture_morph_impl(Morph* morph, ProviderKind provider,
     J3DAnmTransform* secondaryAnimation = nullptr, f32 animationBlend = 0.0f) {
-    if (!dusk::interp::is_enabled() || !dusk::game_clock::is_sim_frame() ||
+    if (!dusk::interp::should_capture() ||
         morph == nullptr || morph->getModel() == nullptr || morph->getAnm() == nullptr)
     {
         return;
@@ -817,7 +816,7 @@ void clear() {
 }
 
 void capture_model(J3DModel* model) {
-    if (!interp::is_enabled() || !game_clock::is_sim_frame() || model == nullptr ||
+    if (!interp::should_capture() || model == nullptr ||
         model->getModelData() == nullptr || model->getMtxBuffer() == nullptr)
     {
         return;
@@ -951,7 +950,7 @@ void set_morph_callbacks_safe(mDoExt_morf_c* morph, bool safe) {
 }
 
 void set_model_attachment(J3DModel* model, J3DModel* parentModel, unsigned short parentJoint) {
-    if (interp::is_enabled() && game_clock::is_sim_frame() && model != nullptr &&
+    if (interp::should_capture() && model != nullptr &&
         parentModel != nullptr)
     {
         s_modelAttachments[model] = {

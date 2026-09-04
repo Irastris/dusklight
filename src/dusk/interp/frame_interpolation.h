@@ -22,6 +22,8 @@ bool presentation_sync_active();
 
 bool is_enabled();
 
+bool should_capture();
+
 void record_final_mtx(Mtx m, const void* key);
 void record_final_mtx(Mtx m);
 bool override_presentation_mtx(const void* key, const Mtx value);

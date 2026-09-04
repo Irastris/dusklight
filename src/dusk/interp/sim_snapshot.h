@@ -20,7 +20,7 @@ enum class SimSnapshotRoll {
 };
 
 inline SimSnapshotRoll roll_sim_snapshot(uint64_t& epoch, SimSnapshot& channel) {
-    if (!game_clock::is_sim_frame()) {
+    if (!should_capture()) {
         return SimSnapshotRoll::Skip;
     }
 

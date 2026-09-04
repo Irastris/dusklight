@@ -53,7 +53,7 @@ f32 sight_slot_rate(int i) {
 }
 
 void capture_slot_anim(daBoomerang_sight_c* sight, int i) {
-    if (!dusk::game_clock::is_sim_frame()) {
+    if (!dusk::interp::should_capture()) {
         return;
     }
 
@@ -68,7 +68,7 @@ void capture_slot_anim(daBoomerang_sight_c* sight, int i) {
 }
 
 void capture_slot_pos(daBoomerang_sight_c* sight, int i) {
-    if (!dusk::game_clock::is_sim_frame()) {
+    if (!dusk::interp::should_capture()) {
         return;
     }
 
