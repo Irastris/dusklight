@@ -12,15 +12,6 @@
 #include "Z2AudioLib/Z2Instances.h"
 #include "f_op/f_op_actor_enemy.h"
 
-#if TARGET_PC
-#include "dusk/interp/dual_buffer.h"
-#include "dusk/settings.h"
-
-static const int TENTACLE_STRAND_COUNT = 13;
-static const int TENTACLE_SEGMENT_COUNT = 10;
-typedef dusk::interp::DualBufferGroup<cXyz, TENTACLE_SEGMENT_COUNT, TENTACLE_STRAND_COUNT> TentacleInterp;
-#endif
-
 enum E_yg_RES_File_ID {
     /* BCK */
     /* 0x04 */ BCK_YG_BITE_DIE = 0x4,
@@ -143,21 +134,6 @@ static BOOL pl_check(e_yg_class* i_this, f32 i_dist) {
     return FALSE;
 }
 
-#if TARGET_PC
-static void daE_YG_interp_post(void* pUserWork) {
-    e_yg_class* i_this = (e_yg_class*)pUserWork;
-    fopAc_ac_c* actor = (fopAc_ac_c*)&i_this->actor;
-
-    GXColor color;
-    color.r = JREG_S(0) + 20;
-    color.g = JREG_S(1) + 20;
-    color.b = JREG_S(2) + 20;
-    color.a = 0xFF;
-
-    i_this->mLineMat.update(TENTACLE_SEGMENT_COUNT, color, &actor->tevStr);
-}
-#endif
-
 static int daE_YG_Draw(e_yg_class* i_this) {
     if (i_this->mDispFlag) {
         return 1;
@@ -184,14 +160,6 @@ static int daE_YG_Draw(e_yg_class* i_this) {
     color.a = 0xFF;
     i_this->mLineMat.update(10, color, &actor->tevStr);
     dComIfGd_set3DlineMatDark(&i_this->mLineMat);
-
-#if TARGET_PC
-    cXyz* srcs[TENTACLE_STRAND_COUNT];
-    for (int s = 0; s < TENTACLE_STRAND_COUNT; s++) {
-        srcs[s] = i_this->mLineMat.getPos(s);
-    }
-    dusk::interp::get<TentacleInterp>(i_this).writeback(srcs, TENTACLE_SEGMENT_COUNT, &daE_YG_interp_post, i_this);
-#endif
 
     dComIfGd_setList();
 

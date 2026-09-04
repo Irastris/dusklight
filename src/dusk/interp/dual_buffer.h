@@ -134,31 +134,6 @@ private:
     uint64_t m_rolled_seq;
 };
 
-template <typename T, int capacity, int strand_count>
-class DualBufferGroup {
-public:
-    typedef DualBuffer<T, capacity> Buffer;
-
-    DualBuffer<T, capacity>& operator[](int i) { return m_buffers[i]; }
-
-    void writeback(T* const* src_and_dst, int count, void (*post)(void*) = NULL,
-                   void* post_user = NULL) {
-        for (int i = 0; i < strand_count; ++i) {
-            m_buffers[i].writeback(src_and_dst[i], count);
-        }
-        finish_post(post, post_user);
-    }
-
-private:
-    static void finish_post(void (*post)(void*), void* post_user) {
-        if (post != NULL) {
-            add_interpolation_callback(post, post_user);
-        }
-    }
-
-    Buffer m_buffers[strand_count];
-};
-
 template <int N>
 class WeatherBuffer {
 public:

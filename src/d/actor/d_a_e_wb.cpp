@@ -22,14 +22,7 @@
 
 #if TARGET_PC
 #include "dusk/dusk.h"
-#include "dusk/interp/dual_buffer.h"
 #include "dusk/interp/frame_interpolation.h"
-
-static const int HIMO_STRAND_COUNT = 2;
-static const int HIMO_SEGMENT_COUNT = 16;
-static const int HIMO_TEX_COUNT = 2;
-typedef dusk::interp::DualBufferGroup<cXyz, HIMO_SEGMENT_COUNT, HIMO_STRAND_COUNT> HimoInterp;
-typedef dusk::interp::DualBuffer<cXyz, HIMO_TEX_COUNT> HimoTexInterp;
 #endif
 
 class daE_WB_HIO_c : public JORReflexible {
@@ -519,13 +512,6 @@ static int daE_WB_Draw(e_wb_class* i_this) {
         dComIfGd_set3DlineMat(&i_this->himo_mat[1]);
         i_this->himo_tex.update(2, l_color, &actor->tevStr);
         dComIfGd_set3DlineMat(&i_this->himo_tex);
-#if TARGET_PC
-        auto& himo = dusk::interp::get<HimoInterp>(i_this);
-        for (int r = 0; r < HIMO_STRAND_COUNT; r++) {
-            himo[r].writeback(i_this->himo_mat[r].getPos(0), HIMO_SEGMENT_COUNT);
-        }
-        dusk::interp::get<HimoTexInterp>(i_this).writeback(i_this->himo_tex.getPos(0), HIMO_TEX_COUNT);
-#endif
     }
 
     return 1;

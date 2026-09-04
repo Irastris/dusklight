@@ -565,12 +565,36 @@ public:
     /* 0x4 */ mDoExt_invJntPacket* mpPackets;
 };
 
+#if TARGET_PC
+struct mDoExt_3DlineInterp_c {
+    mDoExt_3DlineInterp_c()
+        : mPrev(NULL),
+          mCurr(NULL),
+          mCaptureSeq((u64)-1),
+          mCapturePoints(0),
+          mCaptureStrands(0),
+          mPrevValid(false) {}
+
+    bool init(u16 strandCount, u16 maxPointsPerStrand);
+    void capture(mDoExt_3Dline_c* lines, u16 strandCount, u16 pointCount, u16 maxPointsPerStrand);
+    void present(mDoExt_3Dline_c* lines, u16 maxPointsPerStrand);
+
+    cXyz* mPrev;
+    cXyz* mCurr;
+    u64 mCaptureSeq;
+    u16 mCapturePoints;
+    u16 mCaptureStrands;
+    bool mPrevValid;
+};
+#endif
+
 class mDoExt_3DlineMat_c {
 public:
     virtual int getMaterialID() = 0;
     virtual void setMaterial() = 0;
     virtual void draw() = 0;
 #if TARGET_PC
+    virtual void captureInterpPoints() {}
     virtual void refreshGeometryForPresentationEye(const cXyz& eye) {}
 #endif
 
@@ -580,8 +604,8 @@ public:
 class mDoExt_3DlineMat0_c : public mDoExt_3DlineMat_c {
 public:
     int init(u16, u16, int);
-    void update(int, f32, GXColor&, u16, dKy_tevstr_c*);
-    void update(int, GXColor&, dKy_tevstr_c*);
+    void update(int, f32, GXColor&, u16, dKy_tevstr_c* IF_DUSK_ARG(const cXyz* presentationEye = nullptr));
+    void update(int, GXColor&, dKy_tevstr_c* IF_DUSK_ARG(const cXyz* presentationEye = nullptr));
     // some calls to these functions define i_color inline which is illegal in C++ for a non-const
     // reference parameter - we add these overloads to enable standard compiler compatibility
 #if !__MWERKS__
@@ -596,6 +620,10 @@ public:
     virtual int getMaterialID() { return 0; }
     virtual void setMaterial();
     virtual void draw();
+#if TARGET_PC
+    void captureInterpPoints() override;
+    void refreshGeometryForPresentationEye(const cXyz& eye) override;
+#endif
 
     cXyz* getPos(int param_0) { return field_0x18[param_0].field_0x0; }
     f32* getSize(int param_0) { return field_0x18[param_0].field_0x4; }
@@ -608,6 +636,12 @@ private:
     /* 0x14 */ u16 field_0x14;
     /* 0x16 */ u8 field_0x16;
     /* 0x18 */ mDoExt_3Dline_c* field_0x18;
+#if TARGET_PC
+    u8 mInterpLineKind;
+    f32 mInterpLineF;
+    u16 mInterpLineU16;
+    mDoExt_3DlineInterp_c mInterp;
+#endif
 };
 
 class dKy_tevstr_c;
@@ -625,6 +659,7 @@ public:
     void setMaterial();
     void draw();
 #if TARGET_PC
+    void captureInterpPoints() override;
     void refreshGeometryForPresentationEye(const cXyz& eye) override;
 #endif
 
@@ -644,6 +679,7 @@ private:
     u8 mInterpLineKind;
     f32 mInterpLineF;
     u16 mInterpLineU16;
+    mDoExt_3DlineInterp_c mInterp;
 #endif
 };
 

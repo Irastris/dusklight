@@ -10,13 +10,6 @@
 #include "f_op/f_op_kankyo_mng.h"
 #include "f_op/f_op_actor_enemy.h"
 
-#if TARGET_PC
-#include "dusk/interp/dual_buffer.h"
-
-static const int STALK_SEGMENT_COUNT = 12;
-typedef dusk::interp::DualBuffer<cXyz, STALK_SEGMENT_COUNT> StalkInterp;
-#endif
-
 class daE_DB_HIO_c : public JORReflexible {
 public:
     daE_DB_HIO_c();
@@ -102,7 +95,6 @@ static int daE_DB_Draw(e_db_class* i_this) {
     static GXColor l_color = {0x14, 0x0F, 0x00, 0xFF};
     i_this->stalkLine.update(12, l_color, &actor->tevStr);
     dComIfGd_set3DlineMat(&i_this->stalkLine);
-    IF_DUSK(dusk::interp::get<StalkInterp>(i_this).writeback(i_this->stalkLine.getPos(0), STALK_SEGMENT_COUNT));
 
     for (int i = 1; i < 11; i++) {
         if (i_this->thornModel[i] != NULL) {

@@ -26,13 +26,10 @@
 #include <cstring>
 
 #if TARGET_PC
-#include "dusk/interp/dual_buffer.h"
 #include "dusk/mods/item.hpp"
 #include "dusk/settings.h"
 #include "dusk/version.hpp"
 #include "mods/items.h"
-
-typedef dusk::interp::DualBuffer<cXyz, MG_ROD_LURE_LINE_LEN> LineInterp;
 #endif
 
 class dmg_rod_HIO_c : public JORReflexible {
@@ -185,15 +182,6 @@ static int Worm_nodeCallBack(J3DJoint* i_joint, int param_1) {
     return 1;
 }
 
-#if TARGET_PC
-static void dmg_rod_interp_post(void* pUserWork) {
-    dmg_rod_class* i_this = (dmg_rod_class*)pUserWork;
-    const int count = i_this->kind == MG_ROD_KIND_LURE ? MG_ROD_LURE_LINE_LEN : MG_ROD_UKI_LINE_LEN;
-    static GXColor l_color = {0xFF, 0xFF, 0x96, 0xFF};
-    i_this->linemat.update(count, l_color, &i_this->actor.tevStr);
-}
-#endif
-
 static int dmg_rod_Draw(dmg_rod_class* i_this) {
     int unused;
     fopAc_ac_c* actor = &i_this->actor;
@@ -234,8 +222,6 @@ static int dmg_rod_Draw(dmg_rod_class* i_this) {
         i_this->linemat.update(MG_ROD_LURE_LINE_LEN, l_color, &i_this->actor.tevStr);
         dComIfGd_set3DlineMat(&i_this->linemat);
 
-        IF_DUSK(dusk::interp::get<LineInterp>(i_this).writeback(i_this->linemat.getPos(0), MG_ROD_LURE_LINE_LEN, &dmg_rod_interp_post, i_this));
-
         model = i_this->rod_modelMorf->getModel();
         g_env_light.setLightTevColorType_MAJI(model, &i_this->actor.tevStr);
         i_this->rod_modelMorf->entryDL();
@@ -259,8 +245,6 @@ static int dmg_rod_Draw(dmg_rod_class* i_this) {
         static GXColor l_color = {0xFF, 0xFF, 0x96, 0xFF};
         i_this->linemat.update(MG_ROD_UKI_LINE_LEN, l_color, &i_this->actor.tevStr);
         dComIfGd_set3DlineMat(&i_this->linemat);
-
-        IF_DUSK(dusk::interp::get<LineInterp>(i_this).writeback(i_this->linemat.getPos(0), MG_ROD_UKI_LINE_LEN, &dmg_rod_interp_post, i_this));
 
         for (int i = 0; i < 15; i++) {
             g_env_light.setLightTevColorType_MAJI(i_this->rod_uki_model[i], &actor->tevStr);

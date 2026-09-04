@@ -28,6 +28,7 @@
 #if TARGET_PC
 #include "dusk/game_clock.h"
 #include "dusk/interp/frame_interpolation.h"
+#include "dusk/interp/lerp.h"
 #include "dusk/interp/material.h"
 #include "dusk/interp/skeleton.h"
 #include "dusk/logging.h"
@@ -2411,6 +2412,12 @@ int mDoExt_3DlineMat0_c::init(u16 param_0, u16 param_1, int param_2) {
 
     field_0x4 = NULL;
     field_0x16 = 0;
+#if TARGET_PC
+    mInterpLineKind = 0;
+    if (!mInterp.init(param_0, param_1)) {
+        return 0;
+    }
+#endif
     return 1;
 }
 
@@ -2478,7 +2485,7 @@ void mDoExt_3DlineMat0_c::draw() {
 }
 
 void mDoExt_3DlineMat0_c::update(int param_0, f32 param_1, GXColor& param_2, u16 param_3,
-                                     dKy_tevstr_c* param_4) {
+                                     dKy_tevstr_c* param_4 IF_DUSK_ARG(const cXyz* presentationEye)) {
     field_0x8 = param_2;
     field_0xc = param_4;
 
@@ -2489,6 +2496,12 @@ void mDoExt_3DlineMat0_c::update(int param_0, f32 param_1, GXColor& param_2, u16
     } else {
         field_0x14 = (u16)param_0;
     }
+
+#if TARGET_PC
+    mInterpLineKind = 1;
+    mInterpLineF = param_1;
+    mInterpLineU16 = param_3;
+#endif
 
     view_class* sp_2c = dComIfGd_getView();
 
@@ -2525,7 +2538,8 @@ void mDoExt_3DlineMat0_c::update(int param_0, f32 param_1, GXColor& param_2, u16
         f32 local_f31 = param_1;
 
         sp_120 = local_r27[1] - local_r27[0];
-        sp_12c = local_r27[0] - sp_2c->lookat.eye;
+        IF_DUSK(const cXyz& lineEye = (presentationEye != nullptr && dusk::interp::is_enabled()) ? *presentationEye : sp_2c->lookat.eye);
+        sp_12c = local_r27[0] - DUSK_IF_ELSE(lineEye, sp_2c->lookat.eye);
         sp_120 = sp_120.outprod(sp_12c);
         sp_120.normalizeZP();
 
@@ -2549,7 +2563,7 @@ void mDoExt_3DlineMat0_c::update(int param_0, f32 param_1, GXColor& param_2, u16
             }
 
             sp_120 = local_r27[1] - local_r27[0];
-            sp_12c = local_r27[0] - sp_2c->lookat.eye;
+            sp_12c = local_r27[0] - DUSK_IF_ELSE(lineEye, sp_2c->lookat.eye);
             sp_120 = sp_120.outprod(sp_12c);
             sp_120.normalizeZP();
 
@@ -2596,7 +2610,7 @@ void mDoExt_3DlineMat0_c::update(int param_0, f32 param_1, GXColor& param_2, u16
     }
 }
 
-void mDoExt_3DlineMat0_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* param_4) {
+void mDoExt_3DlineMat0_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* param_4 IF_DUSK_ARG(const cXyz* presentationEye)) {
     field_0x8 = param_2;
     field_0xc = param_4;
 
@@ -2607,6 +2621,8 @@ void mDoExt_3DlineMat0_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* pa
     } else {
         field_0x14 = (u16)param_0;
     }
+
+    IF_DUSK(mInterpLineKind = 2);
 
     view_class* sp_34 = dComIfGd_getView();
 
@@ -2644,7 +2660,8 @@ void mDoExt_3DlineMat0_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* pa
         local_r29 = local_r30 + 1;
 
         sp_120 = local_r27[1] - local_r27[0];
-        sp_12c = local_r27[0] - sp_34->lookat.eye;
+        IF_DUSK(const cXyz& lineEye = (presentationEye != nullptr && dusk::interp::is_enabled()) ? *presentationEye : sp_34->lookat.eye);
+        sp_12c = local_r27[0] - DUSK_IF_ELSE(lineEye, sp_34->lookat.eye);
         sp_120 = sp_120.outprod(sp_12c);
         sp_120.normalizeZP();
 
@@ -2665,7 +2682,7 @@ void mDoExt_3DlineMat0_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* pa
 
         for (s32 local_r19 = field_0x14 - 2; local_r19 > 0; local_r19--) {
             sp_120 = local_r27[1] - local_r27[0];
-            sp_12c = local_r27[0] - sp_34->lookat.eye;
+            sp_12c = local_r27[0] - DUSK_IF_ELSE(lineEye, sp_34->lookat.eye);
             sp_120 = sp_120.outprod(sp_12c);
             sp_120.normalizeZP();
 
@@ -2726,6 +2743,9 @@ int mDoExt_3DlineMat1_c::init(u16 param_0, u16 param_1, ResTIMG* param_2, int pa
     mIsDrawn = 0;
 #if TARGET_PC
     mInterpLineKind = 0;
+    if (!mInterp.init(param_0, param_1)) {
+        return 0;
+    }
 #endif
 
     GXInitTexObj(&mTextureObject, (void*)((intptr_t)param_2 + param_2->imageOffset), param_2->width,
@@ -3139,10 +3159,100 @@ void mDoExt_3DlineMat1_c::update(int param_0, GXColor& param_2, dKy_tevstr_c* pa
 }
 
 #if TARGET_PC
+bool mDoExt_3DlineInterp_c::init(u16 strandCount, u16 maxPointsPerStrand) {
+    const u32 count = (u32)strandCount * (u32)maxPointsPerStrand;
+    mPrev = JKR_NEW_ARRAY(cXyz, count);
+    if (mPrev == NULL) {
+        return false;
+    }
+    mCurr = JKR_NEW_ARRAY(cXyz, count);
+    if (mCurr == NULL) {
+        return false;
+    }
+    mCaptureSeq = (u64)-1;
+    mCapturePoints = 0;
+    mCaptureStrands = 0;
+    mPrevValid = false;
+    return true;
+}
+
+void mDoExt_3DlineInterp_c::capture(mDoExt_3Dline_c* lines, u16 strandCount, u16 pointCount, u16 maxPointsPerStrand) {
+    if (!dusk::interp::is_enabled() || !dusk::game_clock::is_sim_frame()) {
+        return;
+    }
+    if (mPrev == NULL || mCurr == NULL || lines == NULL) {
+        return;
+    }
+
+    const u64 seq = dusk::interp::sim_tick_seq();
+    const bool hadCapture = mCaptureSeq != (u64)-1;
+    const bool countChanged = (strandCount != mCaptureStrands) || (pointCount != mCapturePoints);
+    const bool tickGap = hadCapture && (seq != mCaptureSeq + 1);
+
+    if (countChanged || tickGap) {
+        mPrevValid = false;
+    } else if (hadCapture) {
+        for (u16 s = 0; s < strandCount; s++) {
+            memcpy(mPrev + (u32)s * maxPointsPerStrand, mCurr + (u32)s * maxPointsPerStrand, (u32)pointCount * sizeof(cXyz));
+        }
+        mPrevValid = true;
+    } else {
+        mPrevValid = false;
+    }
+
+    for (u16 s = 0; s < strandCount; s++) {
+        memcpy(mCurr + (u32)s * maxPointsPerStrand, lines[s].field_0x0, (u32)pointCount * sizeof(cXyz));
+    }
+
+    mCaptureSeq = seq;
+    mCapturePoints = pointCount;
+    mCaptureStrands = strandCount;
+}
+
+void mDoExt_3DlineInterp_c::present(mDoExt_3Dline_c* lines, u16 maxPointsPerStrand) {
+    if (!mPrevValid || mCaptureSeq != dusk::interp::sim_tick_seq()) {
+        return;
+    }
+    if (mPrev == NULL || mCurr == NULL || lines == NULL) {
+        return;
+    }
+
+    const f32 step = dusk::interp::get_interpolation_step();
+    for (u16 s = 0; s < mCaptureStrands; s++) {
+        cXyz* live = lines[s].field_0x0;
+        const cXyz* prev = mPrev + (u32)s * maxPointsPerStrand;
+        const cXyz* curr = mCurr + (u32)s * maxPointsPerStrand;
+        for (u16 i = 0; i < mCapturePoints; i++) {
+            dusk::interp::lerp(live[i], prev[i], curr[i], step);
+        }
+    }
+}
+
+void mDoExt_3DlineMat0_c::captureInterpPoints() {
+    mInterp.capture(field_0x18, field_0x10, field_0x14, field_0x12);
+}
+
+void mDoExt_3DlineMat0_c::refreshGeometryForPresentationEye(const cXyz& eye) {
+    if (!dusk::interp::is_enabled()) {
+        return;
+    }
+    mInterp.present(field_0x18, field_0x12);
+    if (mInterpLineKind == 1) {
+        update(field_0x14, mInterpLineF, field_0x8, mInterpLineU16, field_0xc, &eye);
+    } else if (mInterpLineKind == 2) {
+        update(field_0x14, field_0x8, field_0xc, &eye);
+    }
+}
+
+void mDoExt_3DlineMat1_c::captureInterpPoints() {
+    mInterp.capture(mpLines, mNumLines, field_0x34, field_0x32);
+}
+
 void mDoExt_3DlineMat1_c::refreshGeometryForPresentationEye(const cXyz& eye) {
     if (!dusk::interp::is_enabled()) {
         return;
     }
+    mInterp.present(mpLines, field_0x32);
     if (mInterpLineKind == 1) {
         update(field_0x34, mInterpLineF, mColor, mInterpLineU16, mpTevStr, &eye);
     } else if (mInterpLineKind == 2) {
@@ -3157,6 +3267,7 @@ void mDoExt_3DlineMatSortPacket::setMat(mDoExt_3DlineMat_c* i_3DlineMat) {
     }
     i_3DlineMat->field_0x4 = mp3DlineMat;
     mp3DlineMat = i_3DlineMat;
+    IF_DUSK(i_3DlineMat->captureInterpPoints());
 }
 
 void mDoExt_3DlineMatSortPacket::draw() {

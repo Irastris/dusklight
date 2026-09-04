@@ -19,15 +19,8 @@
 
 #if TARGET_PC
 #include "dusk/achievements.h"
-#include "dusk/interp/dual_buffer.h"
 #include "dusk/interp/frame_interpolation.h"
 #include "dusk/settings.h"
-
-static const int REIN_STRAND_COUNT = 2;
-static const int REIN_SEGMENT_COUNT = 16;
-static const int REIN_TEX_COUNT = 2;
-typedef dusk::interp::DualBufferGroup<cXyz, REIN_SEGMENT_COUNT, REIN_STRAND_COUNT> ReinInterp;
-typedef dusk::interp::DualBuffer<cXyz, REIN_TEX_COUNT> ReinTexInterp;
 #endif
 
 class daB_GND_HIO_c : public JORReflexible {
@@ -379,13 +372,6 @@ static int daB_GND_Draw(b_gnd_class* i_this) {
 
         i_this->field_0x21e8.update(2, l_color, &a_this->tevStr);
         dComIfGd_set3DlineMat(&i_this->field_0x21e8);
-#if TARGET_PC
-        auto& reins = dusk::interp::get<ReinInterp>(i_this);
-        for (int r = 0; r < REIN_STRAND_COUNT; r++) {
-            reins[r].writeback(i_this->mHorseReins[r].getPos(0), REIN_SEGMENT_COUNT);
-        }
-        dusk::interp::get<ReinTexInterp>(i_this).writeback(i_this->field_0x21e8.getPos(0), REIN_TEX_COUNT);
-#endif
     }
     
     return 1;

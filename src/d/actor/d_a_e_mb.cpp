@@ -13,14 +13,6 @@
 #include "c/c_damagereaction.h"
 #include "Z2AudioLib/Z2Instances.h"
 
-#if TARGET_PC
-#include "dusk/interp/dual_buffer.h"
-#include "dusk/settings.h"
-
-static const int ROPE_SEGMENT_COUNT = 16;
-typedef dusk::interp::DualBuffer<cXyz, ROPE_SEGMENT_COUNT> RopeInterp;
-#endif
-
 #define ACTION_STANDBY    0
 #define ACTION_WALK1      1
 #define ACTION_MOVE       2
@@ -94,7 +86,6 @@ static int daE_MB_Draw(e_mb_class* i_this) {
     static GXColor l_color = {0x14, 0x0F, 0x00, 0xFF};
     i_this->mRopeMat.update(16, l_color, &a_this->tevStr);
     dComIfGd_set3DlineMat(&i_this->mRopeMat);
-    IF_DUSK(dusk::interp::get<RopeInterp>(i_this).writeback(i_this->mRopeMat.getPos(0), ROPE_SEGMENT_COUNT));
     return 1;
 }
 

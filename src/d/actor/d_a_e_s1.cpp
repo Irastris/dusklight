@@ -16,15 +16,6 @@
 #include "f_op/f_op_camera_mng.h"
 #include <cstring>
 
-#if TARGET_PC
-#include "dusk/interp/dual_buffer.h"
-#include "dusk/settings.h"
-
-static const int HAIR_STRAND_COUNT = 22;
-static const int HAIR_SEGMENT_COUNT = 16;
-typedef dusk::interp::DualBufferGroup<cXyz, HAIR_SEGMENT_COUNT, HAIR_STRAND_COUNT> HairInterp;
-#endif
-
 class daE_S1_HIO_c {
 public:
     daE_S1_HIO_c();
@@ -108,20 +99,6 @@ static void anm_init(e_s1_class* i_this, int i_resNo, f32 i_morf, u8 i_attr, f32
     i_this->mAnm = i_resNo;
 }
 
-#if TARGET_PC
-static void daE_S1_interp_post(void* pUserWork) {
-    e_s1_class* i_this = (e_s1_class*)pUserWork;
-
-    GXColor line_color;
-    line_color.r = JREG_S(0) + 5;
-    line_color.g = JREG_S(1) + 10;
-    line_color.b = JREG_S(2) + 10;
-    line_color.a = 0xFF;
-
-    i_this->mLineMat.update(HAIR_SEGMENT_COUNT, line_color, &i_this->tevStr);
-}
-#endif
-
 static int daE_S1_Draw(e_s1_class* i_this) {
     if (i_this->field_0x306c != 0) {
         return 1;
@@ -154,14 +131,6 @@ static int daE_S1_Draw(e_s1_class* i_this) {
 
     i_this->mLineMat.update(16, line_color, &i_this->tevStr);
     dComIfGd_set3DlineMatDark(&i_this->mLineMat);
-
-#if TARGET_PC
-    cXyz* srcs[HAIR_STRAND_COUNT];
-    for (int s = 0; s < HAIR_STRAND_COUNT; s++) {
-        srcs[s] = i_this->mLineMat.getPos(s);
-    }
-    dusk::interp::get<HairInterp>(i_this).writeback(srcs, HAIR_SEGMENT_COUNT, &daE_S1_interp_post, i_this);
-#endif
 
     dComIfGd_setList();
     return 1;
