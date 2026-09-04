@@ -111,7 +111,7 @@ bool decompose(const Mtx matrix, DecomposedMatrix* out) {
         return false;
     }
 
-    result.valid = true;
+    result.status = DecompositionStatus::Valid;
     *out = result;
     return true;
 }
@@ -195,18 +195,23 @@ Quaternion interpolate_rotation(const Quaternion& previous, const Quaternion& cu
     return result;
 }
 
+void ensure_decomposed(MatrixSample& sample) {
+    if (sample.decomposed.status != DecompositionStatus::NotAttempted) {
+        return;
+    }
+    sample.decomposed.status = decompose(sample.value, &sample.decomposed)
+                                   ? DecompositionStatus::Valid
+                                   : DecompositionStatus::Failed;
+}
+
 }  // namespace
 
 void record(MatrixSample* sample, const Mtx value) {
     MTXCopy(value, sample->value);
-    sample->decomposed.valid = false;
+    sample->decomposed.status = DecompositionStatus::NotAttempted;
 }
 
-void finalize(MatrixSample* sample) {
-    sample->decomposed.valid = decompose(sample->value, &sample->decomposed);
-}
-
-void interpolate(Mtx out, const MatrixSample& previous, const MatrixSample& current, float step) {
+void interpolate(Mtx out, MatrixSample& previous, MatrixSample& current, float step) {
     if (step <= 0.0f) {
         MTXCopy(previous.value, out);
         return;
@@ -216,7 +221,12 @@ void interpolate(Mtx out, const MatrixSample& previous, const MatrixSample& curr
         return;
     }
 
-    if (previous.decomposed.valid && current.decomposed.valid) {
+    ensure_decomposed(previous);
+    ensure_decomposed(current);
+
+    if (previous.decomposed.status == DecompositionStatus::Valid &&
+        current.decomposed.status == DecompositionStatus::Valid)
+    {
         const DecomposedMatrix adjustedPrevious =
             choose_previous_decomposition(previous.decomposed, current.decomposed);
         DecomposedMatrix result;

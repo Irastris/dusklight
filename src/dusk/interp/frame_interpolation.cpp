@@ -27,8 +27,14 @@ void clear_actor_pose();
 
 namespace {
 
-struct Recording {
-    absl::flat_hash_map<uintptr_t, dusk::interp::matrix::MatrixSample> matrix_values;
+struct MatrixChannel {
+    dusk::interp::matrix::MatrixSample previous;
+    dusk::interp::matrix::MatrixSample current;
+    Mtx replacement;
+    uint64_t recordSeq = 0;
+    uint64_t replacementGen = 0;
+    bool currentValid = false;
+    bool previousValid = false;
 };
 
 bool s_recording = false;
@@ -39,10 +45,10 @@ float s_step = 0.0f;
 uint64_t s_simTickSeq = 0;
 uint64_t s_observedPresentationEpoch = 0;
 
-Recording s_currentRecording;
-Recording s_previousRecording;
-
-absl::flat_hash_map<uintptr_t, Mtx> g_replacements;
+absl::flat_hash_map<uintptr_t, MatrixChannel> s_matrixChannels;
+uint64_t s_recordSeq = 0;
+uint64_t s_replacementGen = 1;
+size_t s_recordedThisPass = 0;
 
 int s_presentationDepth = 0;
 
@@ -53,37 +59,30 @@ const Mtx* resolve_replacement(const Mtx* source, Mtx* scratch) {
         return source;
     }
 
-    auto it = g_replacements.find(reinterpret_cast<uintptr_t>(source));
-    if (it == g_replacements.end()) {
+    auto it = s_matrixChannels.find(reinterpret_cast<uintptr_t>(source));
+    if (it == s_matrixChannels.end() || it->second.replacementGen != s_replacementGen) {
         return source;
     }
 
-    MTXCopy(it->second, *scratch);
+    MTXCopy(it->second.replacement, *scratch);
     return scratch;
 }
 
-bool has_recording_data(const Recording& recording) {
-    return !recording.matrix_values.empty();
-}
-
-void clear_replacements() {
-    g_replacements.clear();
-}
-
 void interpolate_replacements() {
-    clear_replacements();
+    ++s_replacementGen;
     s_replacementsActive = dusk::interp::is_enabled() && !s_recording && !s_syncPresentation
-                           && has_recording_data(s_currentRecording);
+                           && s_recordedThisPass != 0;
     if (!s_replacementsActive) {
         return;
     }
-    for (auto const& old : s_previousRecording.matrix_values) {
-        if (auto it = s_currentRecording.matrix_values.find(old.first);
-            it != s_currentRecording.matrix_values.end())
-        {
-            dusk::interp::matrix::interpolate(
-                g_replacements[old.first], old.second, it->second, s_step);
+    for (auto& entry : s_matrixChannels) {
+        MatrixChannel& channel = entry.second;
+        if (!channel.previousValid || channel.recordSeq != s_recordSeq) {
+            continue;
         }
+        dusk::interp::matrix::interpolate(
+            channel.replacement, channel.previous, channel.current, s_step);
+        channel.replacementGen = s_replacementGen;
     }
 }
 
@@ -130,9 +129,10 @@ void clear_interpolation_history() {
     s_recording = false;
     s_replacementsActive = false;
     s_syncPresentation = false;
-    s_previousRecording = {};
-    s_currentRecording = {};
-    clear_replacements();
+    s_matrixChannels.clear();
+    s_recordedThisPass = 0;
+    s_recordSeq = 0;
+    s_replacementGen = 1;
     dusk::interp::clear_actor_pose();
     dusk::interp::clear_owned_buffers();
     dusk::interp::clear_weather_buffers();
@@ -191,20 +191,25 @@ void begin_record() {
     }
 
     s_syncPresentation = false;
-    s_previousRecording = std::move(s_currentRecording);
-    s_currentRecording = {};
+    ++s_recordSeq;
+    s_recordedThisPass = 0;
+    ++s_replacementGen;
     s_recording = true;
     s_replacementsActive = false;
-    clear_replacements();
+    for (auto it = s_matrixChannels.begin(); it != s_matrixChannels.end();) {
+        if (it->second.recordSeq + 2 < s_recordSeq) {
+            auto stale = it++;
+            s_matrixChannels.erase(stale);
+        } else {
+            ++it;
+        }
+    }
     camera_on_begin_record();
     particle::begin_record();
 }
 
 void end_record() {
     s_recording = false;
-    for (auto& entry : s_currentRecording.matrix_values) {
-        dusk::interp::matrix::finalize(&entry.second);
-    }
     particle::end_record();
 }
 
@@ -231,8 +236,17 @@ void record_final_mtx(Mtx m, const void* key) {
         return;
     }
 
-    auto& sample = s_currentRecording.matrix_values[reinterpret_cast<uintptr_t>(key)];
-    dusk::interp::matrix::record(&sample, m);
+    auto& channel = s_matrixChannels[reinterpret_cast<uintptr_t>(key)];
+    if (channel.recordSeq != s_recordSeq) {
+        channel.previousValid = channel.currentValid && channel.recordSeq + 1 == s_recordSeq;
+        if (channel.previousValid) {
+            channel.previous = channel.current;
+        }
+        channel.recordSeq = s_recordSeq;
+        channel.currentValid = true;
+        ++s_recordedThisPass;
+    }
+    dusk::interp::matrix::record(&channel.current, m);
 }
 
 void record_final_mtx(Mtx m) {
@@ -244,7 +258,9 @@ bool override_presentation_mtx(const void* key, const Mtx value) {
         return false;
     }
 
-    MTXCopy(value, g_replacements[reinterpret_cast<uintptr_t>(key)]);
+    auto& channel = s_matrixChannels[reinterpret_cast<uintptr_t>(key)];
+    MTXCopy(value, channel.replacement);
+    channel.replacementGen = s_replacementGen;
     return true;
 }
 
@@ -253,12 +269,12 @@ bool lookup_replacement(const void* key, Mtx out) {
         return false;
     }
 
-    auto it = g_replacements.find(reinterpret_cast<uintptr_t>(key));
-    if (it == g_replacements.end()) {
+    auto it = s_matrixChannels.find(reinterpret_cast<uintptr_t>(key));
+    if (it == s_matrixChannels.end() || it->second.replacementGen != s_replacementGen) {
         return false;
     }
 
-    MTXCopy(it->second, out);
+    MTXCopy(it->second.replacement, out);
     return true;
 }
 

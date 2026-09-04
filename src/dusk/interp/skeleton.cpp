@@ -292,7 +292,6 @@ bool capture_joint_hierarchy(J3DModel* model, SkeletonSnapshot* snapshot) {
             MTXConcat(inverseParent, model->getAnmMtx(jointIndex), localMatrix);
         }
         dusk::interp::matrix::record(&snapshot->jointLocalMatrices[jointIndex], localMatrix);
-        dusk::interp::matrix::finalize(&snapshot->jointLocalMatrices[jointIndex]);
     }
     return true;
 }
@@ -310,8 +309,8 @@ bool captured_pose_snapshots_compatible(
 }
 
 bool evaluate_captured_pose(J3DModel* model, SkeletonRecord* record, f32 step) {
-    const SkeletonSnapshot& previous = record->previous;
-    const SkeletonSnapshot& current = record->current;
+    SkeletonSnapshot& previous = record->previous;
+    SkeletonSnapshot& current = record->current;
     if (!captured_pose_snapshots_compatible(previous, current)) {
         return false;
     }
@@ -457,11 +456,10 @@ void capture_base_matrix(J3DModel* model, dusk::interp::matrix::MatrixSample* ba
     MTXIdentity(identity);
     J3DCalcViewBaseMtx(identity, *model->getBaseScale(), model->getBaseTRMtx(), combined);
     dusk::interp::matrix::record(baseMatrix, combined);
-    dusk::interp::matrix::finalize(baseMatrix);
 }
 
-void apply_presentation_base(J3DModel* model, const SkeletonSnapshot& previous,
-    const SkeletonSnapshot& current, f32 step, Vec* savedScale, Mtx savedBase) {
+void apply_presentation_base(J3DModel* model, SkeletonSnapshot& previous,
+    SkeletonSnapshot& current, f32 step, Vec* savedScale, Mtx savedBase) {
     *savedScale = *model->getBaseScale();
     MTXCopy(model->getBaseTRMtx(), savedBase);
 
@@ -480,8 +478,8 @@ void restore_presentation_base(J3DModel* model, const Vec& savedScale, const Mtx
 }
 
 bool evaluate_standard(J3DModel* model, SkeletonRecord* record, f32 step) {
-    const SkeletonSnapshot& previous = record->previous;
-    const SkeletonSnapshot& current = record->current;
+    SkeletonSnapshot& previous = record->previous;
+    SkeletonSnapshot& current = record->current;
     if (!same_standard_sources(previous, current)) {
         return false;
     }
@@ -540,8 +538,8 @@ bool morph_snapshots_compatible(const SkeletonSnapshot& previous, const Skeleton
 }
 
 bool evaluate_morph(J3DModel* model, SkeletonRecord* record, f32 step) {
-    const SkeletonSnapshot& previous = record->previous;
-    const SkeletonSnapshot& current = record->current;
+    SkeletonSnapshot& previous = record->previous;
+    SkeletonSnapshot& current = record->current;
     if (!morph_snapshots_compatible(previous, current) || current.primaryAnimation == nullptr) {
         return false;
     }
