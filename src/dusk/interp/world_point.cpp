@@ -10,9 +10,8 @@
 namespace {
 
 struct Record {
-    cXyz prev{};
     uint64_t epoch = ~uint64_t{0};
-    dusk::interp::SimSnapshot snap;
+    dusk::interp::Channel<cXyz> pos;
 };
 
 }  // namespace
@@ -25,9 +24,7 @@ void capture_world_point(const void* key, const cXyz& outgoing) {
     }
 
     Record& rec = get<Record>(key);
-    if (roll_sim_snapshot(rec.epoch, rec.snap) == SimSnapshotRoll::Capture) {
-        rec.prev = outgoing;
-    }
+    rec.pos.capture(rec.epoch, outgoing);
 }
 
 void invalidate_world_point(const void* key) {
@@ -47,8 +44,8 @@ bool present_world_point(const void* key, const cXyz& current, Vec* out_screen) 
 
     const Record* rec = find<Record>(key);
     const float step = get_interpolation_step();
-    if (rec == nullptr || !rec->snap.prev_valid || !is_enabled() ||
-        !project_recorded_pair(&rec->prev, &current, step, out_screen))
+    if (rec == nullptr || rec->pos.previous() == nullptr || !is_enabled() ||
+        !project_recorded_pair(rec->pos.previous(), &current, step, out_screen))
     {
         mDoLib_project(const_cast<cXyz*>(&current), out_screen);
     }

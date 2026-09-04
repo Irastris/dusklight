@@ -17,29 +17,23 @@
 
 namespace {
 
+struct CursorOffset {
+    f32 x = 0.0f;
+    f32 y = 0.0f;
+};
+
 struct CursorWorld {
     cXyz pos{};
     f32 offset_x = 0.0f;
     f32 offset_y = 0.0f;
-    f32 prev_offset_x = 0.0f;
-    f32 prev_offset_y = 0.0f;
     uint64_t epoch = ~uint64_t{0};
-    dusk::interp::SimSnapshot offset;
+    dusk::interp::Channel<CursorOffset> offset;
 };
-
-void capture_offset(CursorWorld& rec) {
-    if (dusk::interp::roll_sim_snapshot(rec.epoch, rec.offset) ==
-        dusk::interp::SimSnapshotRoll::Capture)
-    {
-        rec.prev_offset_x = rec.offset_x;
-        rec.prev_offset_y = rec.offset_y;
-    }
-}
 
 void apply_world(dSelect_cursor_c* cursor, cXyz const& pos, f32 offset_x, f32 offset_y) {
     CursorWorld& rec = dusk::interp::get<CursorWorld>(cursor);
     dusk::interp::capture_world_point(cursor, rec.pos);
-    capture_offset(rec);
+    rec.offset.capture(rec.epoch, {rec.offset_x, rec.offset_y});
     rec.pos = pos;
     rec.offset_x = offset_x;
     rec.offset_y = offset_y;
@@ -306,10 +300,12 @@ void dSelect_cursor_c::draw() {
         dusk::interp::present_world_point(this, rec->pos, &screen);
         f32 offset_x = rec->offset_x;
         f32 offset_y = rec->offset_y;
-        if (rec->offset.prev_valid && dusk::interp::is_enabled()) {
+        if (const CursorOffset* prev = rec->offset.previous();
+            prev != nullptr && dusk::interp::is_enabled())
+        {
             const f32 step = dusk::interp::get_interpolation_step();
-            offset_x = dusk::interp::lerp(rec->prev_offset_x, rec->offset_x, step);
-            offset_y = dusk::interp::lerp(rec->prev_offset_y, rec->offset_y, step);
+            offset_x = dusk::interp::lerp(prev->x, rec->offset_x, step);
+            offset_y = dusk::interp::lerp(prev->y, rec->offset_y, step);
         }
         setPos(screen.x + offset_x, screen.y + offset_y);
     }

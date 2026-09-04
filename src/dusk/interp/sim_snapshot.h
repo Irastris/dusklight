@@ -7,6 +7,7 @@
 
 #ifdef __cplusplus
 namespace dusk::interp {
+namespace detail {
 
 struct SimSnapshot {
     uint64_t tick = 0;
@@ -50,6 +51,38 @@ inline SimSnapshotRoll roll_sim_snapshot(uint64_t& epoch, SimSnapshot& channel, 
     }
     return roll;
 }
+
+}  // namespace detail
+
+template <typename T>
+class Channel {
+public:
+    void capture(uint64_t& epoch, const T& outgoing) {
+        if (detail::roll_sim_snapshot(epoch, m_snap) == detail::SimSnapshotRoll::Capture) {
+            m_prev = outgoing;
+        }
+    }
+
+    template <typename U>
+    void capture(uint64_t& epoch, const T& outgoing, Channel<U>& sibling) {
+        if (detail::roll_sim_snapshot(epoch, m_snap, sibling.m_snap) ==
+            detail::SimSnapshotRoll::Capture)
+        {
+            m_prev = outgoing;
+        }
+    }
+
+    const T* previous() const {
+        return m_snap.prev_valid ? &m_prev : nullptr;
+    }
+
+private:
+    template <typename>
+    friend class Channel;
+
+    T m_prev{};
+    detail::SimSnapshot m_snap;
+};
 
 }  // namespace dusk::interp
 #endif

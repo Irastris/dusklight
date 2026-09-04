@@ -26,14 +26,16 @@
 
 namespace {
 
+struct SightAnim {
+    f32 bck = 0.0f;
+    f32 brk = 0.0f;
+    u8 alpha = 0;
+};
+
 struct SightSlot {
-    cXyz prev_pos{};
-    f32 prev_bck = 0.0f;
-    f32 prev_brk = 0.0f;
-    u8 prev_alpha = 0;
     uint64_t epoch = ~uint64_t{0};
-    dusk::interp::SimSnapshot pos;
-    dusk::interp::SimSnapshot anim;
+    dusk::interp::Channel<cXyz> pos;
+    dusk::interp::Channel<SightAnim> anim;
 };
 
 struct PresentedSlot {
@@ -58,13 +60,9 @@ void capture_slot_anim(daBoomerang_sight_c* sight, int i) {
     }
 
     SightSlot& rec = dusk::interp::get<SightSlot>(sight_slot_key(sight, i));
-    if (dusk::interp::roll_sim_snapshot(rec.epoch, rec.anim, rec.pos) ==
-        dusk::interp::SimSnapshotRoll::Capture)
-    {
-        rec.prev_bck = sight->field_0x98[i];
-        rec.prev_brk = sight->field_0xb0[i];
-        rec.prev_alpha = sight->m_alpha[i];
-    }
+    rec.anim.capture(rec.epoch,
+                     {sight->field_0x98[i], sight->field_0xb0[i], sight->m_alpha[i]},
+                     rec.pos);
 }
 
 void capture_slot_pos(daBoomerang_sight_c* sight, int i) {
@@ -73,11 +71,7 @@ void capture_slot_pos(daBoomerang_sight_c* sight, int i) {
     }
 
     SightSlot& rec = dusk::interp::get<SightSlot>(sight_slot_key(sight, i));
-    if (dusk::interp::roll_sim_snapshot(rec.epoch, rec.pos, rec.anim) ==
-        dusk::interp::SimSnapshotRoll::Capture)
-    {
-        rec.prev_pos = sight->m_pos[i];
-    }
+    rec.pos.capture(rec.epoch, sight->m_pos[i], rec.anim);
 }
 
 void invalidate_slot(daBoomerang_sight_c* sight, int i) {
@@ -120,26 +114,27 @@ PresentedSlot present_sight_slot(daBoomerang_sight_c* sight, int i) {
     const SightSlot* rec = dusk::interp::find<SightSlot>(sight_slot_key(sight, i));
     const f32 step = dusk::interp::get_interpolation_step();
     Vec screen;
-    if (rec == nullptr || !rec->pos.prev_valid || !dusk::interp::is_enabled() ||
-        !dusk::interp::project_recorded_pair(&rec->prev_pos, &sight->m_pos[i], step, &screen))
+    if (rec == nullptr || rec->pos.previous() == nullptr || !dusk::interp::is_enabled() ||
+        !dusk::interp::project_recorded_pair(rec->pos.previous(), &sight->m_pos[i], step, &screen))
     {
         mDoLib_project(&sight->m_pos[i], &screen);
     }
     out.x = screen.x;
     out.y = screen.y;
 
-    if (rec == nullptr || !rec->anim.prev_valid || !dusk::interp::is_enabled()) {
+    if (rec == nullptr || rec->anim.previous() == nullptr || !dusk::interp::is_enabled()) {
         return out;
     }
 
+    const SightAnim* prev_anim = rec->anim.previous();
     const f32 rate = sight_slot_rate(i);
     unsigned bck_attr = J3DFrameCtrl::EMode_LOOP;
-    if (out.bck < 21.0f || rec->prev_bck < 21.0f) {
+    if (out.bck < 21.0f || prev_anim->bck < 21.0f) {
         bck_attr = J3DFrameCtrl::EMode_NONE;
     }
 
     f32 bck;
-    if (dusk::interp::anim::try_present(rec->prev_bck,
+    if (dusk::interp::anim::try_present(prev_anim->bck,
                                         {out.bck, rate, 21.0f, 50.0f, bck_attr}, step, &bck))
     {
         out.bck = bck;
@@ -147,14 +142,14 @@ PresentedSlot present_sight_slot(daBoomerang_sight_c* sight, int i) {
 
     f32 brk;
     const f32 brk_end = sight->m_cursorYellow2Brk->getFrameMax();
-    if (dusk::interp::anim::try_present(rec->prev_brk,
+    if (dusk::interp::anim::try_present(prev_anim->brk,
                                         {out.brk, rate, 0.0f, brk_end, J3DFrameCtrl::EMode_LOOP},
                                         step, &brk))
     {
         out.brk = brk;
     }
 
-    out.alpha = dusk::interp::lerp(rec->prev_alpha, out.alpha, step);
+    out.alpha = dusk::interp::lerp(prev_anim->alpha, out.alpha, step);
     return out;
 }
 
